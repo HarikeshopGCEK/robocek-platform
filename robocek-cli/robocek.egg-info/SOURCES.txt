@@ -1,0 +1,9 @@
+pyproject.toml
+robocek/__init__.py
+robocek/cli.py
+robocek.egg-info/PKG-INFO
+robocek.egg-info/SOURCES.txt
+robocek.egg-info/dependency_links.txt
+robocek.egg-info/entry_points.txt
+robocek.egg-info/requires.txt
+robocek.egg-info/top_level.txt

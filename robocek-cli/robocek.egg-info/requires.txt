@@ -1,0 +1,4 @@
+typer
+rich
+platformio
+pyserial

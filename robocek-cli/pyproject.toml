@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "robocek"
+version = "0.1.0"
+description = "ROBOCEK Embedded Robotics Development Platform"
+requires-python = ">=3.10"
+dependencies = [
+    "typer",
+    "rich",
+    "platformio",
+    "pyserial"
+]
+
+[project.scripts]
+robocek = "robocek.cli:app"
