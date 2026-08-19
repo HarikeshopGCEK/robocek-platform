@@ -7,3 +7,4 @@ Requires-Dist: typer
 Requires-Dist: rich
 Requires-Dist: platformio
 Requires-Dist: pyserial
+Requires-Dist: pyyaml

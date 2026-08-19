@@ -11,7 +11,8 @@ dependencies = [
     "typer",
     "rich",
     "platformio",
-    "pyserial"
+    "pyserial",
+    "pyyaml"
 ]
 
 [project.scripts]

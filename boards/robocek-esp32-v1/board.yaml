@@ -1,0 +1,28 @@
+name: ROBOCEK ESP32 Robot V1
+
+mcu:
+  family: esp32
+  variant: esp32
+
+motor:
+  driver: tb6612
+
+  standby: 23
+
+  left:
+    pwm: 25
+    in1: 26
+    in2: 27
+
+  right:
+    pwm: 33
+    in1: 18
+    in2: 19
+
+communication:
+  wifi: true
+  esp_now: true
+
+i2c:
+  sda: 21
+  scl: 22
