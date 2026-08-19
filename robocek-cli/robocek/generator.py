@@ -56,5 +56,37 @@ def generate_project_config(
         board,
         output
     )
+    generate_line_sensor_config(
+        board,
+        output
+    )
 
     return output
+
+def generate_line_sensor_config(
+    board: Board,
+    output: Path
+):
+    sensor = board.data.get("line_sensor")
+
+    if not sensor:
+        return
+
+    left = sensor["left"]
+    right = sensor["right"]
+
+    content = f"""
+// ========================================
+// Line Sensor Configuration
+// ========================================
+
+#define RC_LINE_SENSOR_LEFT {left["pin"]}
+#define RC_LINE_SENSOR_RIGHT {right["pin"]}
+"""
+
+    with output.open(
+        "a",
+        encoding="utf-8"
+    ) as file:
+
+        file.write(content)

@@ -13,7 +13,11 @@ app = typer.Typer(
     name="robocek",
     help="ROBOCEK Embedded Robotics Development Platform"
 )
-
+board_app = typer.Typer(
+    name="board",
+    help="ROBOCEK Board Management"
+)
+app.add_typer(board_app)
 console = Console()
 
 
@@ -393,6 +397,204 @@ def config():
     console.print(
         f"  File : {output}"
     )
-    
+@board_app.command("list")
+def board_list():
+    """List all available ROBOCEK boards."""
+    boards_dir = PROJECT_ROOT / "boards"
+    if not boards_dir.exists():
+        console.print(
+            "[bold red]Error:[/bold red] "
+            "Boards directory not found."
+        )
+        return
+    boards = []
+
+    for board_dir in boards_dir.iterdir():
+        if not board_dir.is_dir():
+            continue
+        board_file = board_dir / "board.yaml"
+        if board_file.exists():
+            boards.append(board_dir.name)
+    console.print()
+    console.print("[bold cyan]Available ROBOCEK Boards[/bold cyan]")
+    if not boards:
+        console.print("[yellow]No boards found.[/yellow]")
+        return
+    for board_id in sorted(boards):
+        try:
+            board = load_board(
+                board_id,
+                boards_dir
+            )
+
+            console.print(
+                f"[bold green]{board.id}[/bold green]"
+            )
+
+            console.print(
+                f"  {board.name}"
+            )
+
+            console.print()
+
+        except Exception as error:
+
+            console.print(
+                f"[red]{board_id} - Error: {error}[/red]"
+            )
+
+@board_app.command("info")
+def board_info(
+    board_id: str = typer.Argument(
+        ...,
+        help="Board ID."
+    )
+):
+    """Show detailed information about a ROBOCEK board."""
+
+    boards_dir = PROJECT_ROOT / "boards"
+
+    try:
+
+        board = load_board(
+            board_id,
+            boards_dir
+        )
+
+    except FileNotFoundError:
+
+        console.print(
+            f"[bold red]Error:[/bold red] "
+            f"Board '{board_id}' not found."
+        )
+
+        raise typer.Exit(code=1)
+
+    console.print()
+
+    console.print(
+        f"[bold cyan]{board.name}[/bold cyan]"
+    )
+
+    console.print(
+        f"ID: {board.id}"
+    )
+
+    console.print()
+
+    # MCU
+    console.print(
+        "[bold yellow]MCU[/bold yellow]"
+    )
+
+    mcu = board.mcu
+
+    for key, value in mcu.items():
+
+        console.print(
+            f"  {key}: {value}"
+        )
+
+    console.print()
+
+    # Motor
+    motor = board.motor
+
+    console.print(
+        "[bold yellow]MOTOR[/bold yellow]"
+    )
+
+    console.print(
+        f"  Driver: {motor.get('driver', 'Unknown')}"
+    )
+
+    console.print(
+        f"  Standby: GPIO{motor.get('standby', 'N/A')}"
+    )
+
+    left = motor.get("left", {})
+    right = motor.get("right", {})
+
+    console.print(
+        "  Left:"
+    )
+
+    console.print(
+        f"    PWM: GPIO{left.get('pwm', 'N/A')}"
+    )
+
+    console.print(
+        f"    IN1: GPIO{left.get('in1', 'N/A')}"
+    )
+
+    console.print(
+        f"    IN2: GPIO{left.get('in2', 'N/A')}"
+    )
+
+    console.print(
+        "  Right:"
+    )
+
+    console.print(
+        f"    PWM: GPIO{right.get('pwm', 'N/A')}"
+    )
+
+    console.print(
+        f"    IN1: GPIO{right.get('in1', 'N/A')}"
+    )
+
+    console.print(
+        f"    IN2: GPIO{right.get('in2', 'N/A')}"
+    )
+
+    console.print()
+
+    # Communication
+    communication = board.data.get(
+        "communication",
+        {}
+    )
+
+    console.print(
+        "[bold yellow]COMMUNICATION[/bold yellow]"
+    )
+
+    if communication:
+
+        for key, value in communication.items():
+
+            if isinstance(value, bool):
+                value = "Yes" if value else "No"
+
+            console.print(
+                f"  {key}: {value}"
+            )
+
+    else:
+
+        console.print(
+            "  None configured"
+        )
+
+    console.print()
+
+    # I2C
+    i2c = board.data.get("i2c")
+
+    if i2c:
+
+        console.print(
+            "[bold yellow]I2C[/bold yellow]"
+        )
+
+        console.print(
+            f"  SDA: GPIO{i2c.get('sda', 'N/A')}"
+        )
+
+        console.print(
+            f"  SCL: GPIO{i2c.get('scl', 'N/A')}"
+        )
+
+        console.print()  
 if __name__ == "__main__":
     app()   

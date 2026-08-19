@@ -10,14 +10,14 @@ motor:
   standby: 23
 
   left:
-    pwm: 25
-    in1: 26
-    in2: 27
-
-  right:
     pwm: 33
     in1: 18
     in2: 19
+
+  right:
+    pwm: 25
+    in1: 26
+    in2: 27
 
 communication:
   wifi: true
@@ -26,3 +26,12 @@ communication:
 i2c:
   sda: 21
   scl: 22
+
+line_sensor:
+  type: digital
+
+  left:
+    pin: 32
+
+  right:
+    pin: 35
