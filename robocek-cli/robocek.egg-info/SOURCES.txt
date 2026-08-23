@@ -1,6 +1,9 @@
 pyproject.toml
 robocek/__init__.py
+robocek/board.py
 robocek/cli.py
+robocek/generator.py
+robocek/project.py
 robocek.egg-info/PKG-INFO
 robocek.egg-info/SOURCES.txt
 robocek.egg-info/dependency_links.txt

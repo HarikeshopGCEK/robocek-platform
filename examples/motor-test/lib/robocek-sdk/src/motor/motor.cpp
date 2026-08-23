@@ -21,6 +21,9 @@ MotorController Motor;
 
 void MotorController::begin() {
 
+    pinMode(RC_MOTOR_STBY, OUTPUT);
+    digitalWrite(RC_MOTOR_STBY, HIGH);
+
     pinMode(LEFT_IN1, OUTPUT);
     pinMode(LEFT_IN2, OUTPUT);
 

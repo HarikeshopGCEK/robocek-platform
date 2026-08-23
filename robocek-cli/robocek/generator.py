@@ -60,6 +60,10 @@ def generate_project_config(
         board,
         output
     )
+    generate_ultrasonic_config(
+        board,
+        output
+    )
 
     return output
 
@@ -75,6 +79,13 @@ def generate_line_sensor_config(
     left = sensor["left"]
     right = sensor["right"]
 
+    active = sensor.get("active", "HIGH").upper()
+
+    if active not in ("LOW", "HIGH"):
+        raise ValueError(
+            "line_sensor.active must be LOW or HIGH"
+        )
+
     content = f"""
 // ========================================
 // Line Sensor Configuration
@@ -82,6 +93,7 @@ def generate_line_sensor_config(
 
 #define RC_LINE_SENSOR_LEFT {left["pin"]}
 #define RC_LINE_SENSOR_RIGHT {right["pin"]}
+#define RC_LINE_SENSOR_ACTIVE {active}
 """
 
     with output.open(
@@ -89,4 +101,29 @@ def generate_line_sensor_config(
         encoding="utf-8"
     ) as file:
 
+        file.write(content)
+
+def generate_ultrasonic_config(
+    board: Board,
+    output: Path
+):
+    ultrasonic = board.data.get("ultrasonic_sensor")
+    if not ultrasonic:
+        return
+    left = ultrasonic["left"]
+    right = ultrasonic["right"]
+
+    content = f"""
+// ========================================
+// Ultrasonic Sensor Configuration
+// ========================================
+#define RC_ULTRASONIC_LEFT_TRIGGER {left["trigger"]}
+#define RC_ULTRASONIC_LEFT_ECHO {left["echo"]}
+#define RC_ULTRASONIC_RIGHT_TRIGGER {right["trigger"]}
+#define RC_ULTRASONIC_RIGHT_ECHO {right["echo"]}
+"""
+    with output.open(
+        "a",
+        encoding="utf-8"
+    ) as file:
         file.write(content)

@@ -381,9 +381,9 @@ def config():
         / "robocek_config.h"
     )
 
-    generate_motor_config(
-        board,
-        output
+    generate_project_config(
+        project_dir,
+        board
     )
 
     console.print(

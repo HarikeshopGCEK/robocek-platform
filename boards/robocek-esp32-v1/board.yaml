@@ -29,9 +29,17 @@ i2c:
 
 line_sensor:
   type: digital
+  active: HIGH
 
   left:
     pin: 32
 
   right:
     pin: 35
+ultrasonic_sensor:
+  left:
+    trigger: 32
+    echo: 35
+  right:
+    trigger: 5
+    echo: 34  
