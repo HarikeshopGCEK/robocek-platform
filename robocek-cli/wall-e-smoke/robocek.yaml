@@ -1,0 +1,3 @@
+name: wall-e-smoke
+template: obstacle-avoider
+board: robocek-esp32-v1

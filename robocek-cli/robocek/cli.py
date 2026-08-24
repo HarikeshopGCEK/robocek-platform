@@ -17,12 +17,104 @@ board_app = typer.Typer(
     name="board",
     help="ROBOCEK Board Management"
 )
+template_app = typer.Typer(
+    help="Manage ROBOCEK project templates."
+)
+
+app.add_typer(
+    template_app,
+    name="template"
+)
 app.add_typer(board_app)
 console = Console()
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES_DIR = PROJECT_ROOT / "templates"
+EXAMPLES_DIR = PROJECT_ROOT / "examples"
+
+
+def _available_templates() -> list[Path]:
+    if not EXAMPLES_DIR.exists():
+        return []
+
+    templates = []
+
+    for item in EXAMPLES_DIR.iterdir():
+        if not item.is_dir():
+            continue
+
+        main_cpp = item / "src" / "main.cpp"
+
+        if main_cpp.exists():
+            templates.append(item)
+
+    return sorted(
+        templates,
+        key=lambda path: path.name
+    )
+
+
+def _resolve_template(template_name: str) -> Path:
+    template_dir = EXAMPLES_DIR / template_name
+
+    main_cpp = template_dir / "src" / "main.cpp"
+
+    if not template_dir.exists() or not main_cpp.exists():
+        raise FileNotFoundError(
+            f"Template '{template_name}' not found."
+        )
+
+    return template_dir
+
+
+def _write_platformio_ini(destination: Path):
+    content = """[env:esp32dev]
+platform = espressif32
+board = esp32dev
+framework = arduino
+monitor_speed = 115200
+build_flags =
+    -I generated
+"""
+
+    (destination / "platformio.ini").write_text(
+        content,
+        encoding="utf-8"
+    )
+
+
+def _write_robocek_yaml(
+    destination: Path,
+    project_name: str,
+    template_name: str,
+    board_id: str
+):
+    content = f"""name: {project_name}
+template: {template_name}
+board: {board_id}
+"""
+
+    (destination / "robocek.yaml").write_text(
+        content,
+        encoding="utf-8"
+    )
+
+
+def _copy_sdk(destination: Path):
+    sdk_src = PROJECT_ROOT / "sdk" / "roboceksdk" / "src"
+
+    if not sdk_src.exists():
+        raise FileNotFoundError(
+            "SDK source not found."
+        )
+
+    sdk_dest = destination / "lib" / "robocek-sdk" / "src"
+
+    shutil.copytree(
+        sdk_src,
+        sdk_dest
+    )
 
 
 @app.command()
@@ -39,15 +131,24 @@ def hello():
 
 @app.command()
 def create(
+    template_name: str = typer.Argument(
+        ...,
+        help="Template to use, for example: line-follower"
+    ),
     project_name: str = typer.Argument(
         ...,
         help="Name of the project to create."
+    ),
+    board: str = typer.Option(
+        "robocek-esp32-v1",
+        "--board",
+        "-b",
+        help="Board ID."
     )
 ):
-    """Create a new ROBOCEK project."""
+    """Create a new ROBOCEK project from a template."""
 
     destination = Path.cwd() / project_name
-    template = TEMPLATES_DIR / "esp32-basic"
 
     if destination.exists():
         console.print(
@@ -56,10 +157,26 @@ def create(
         )
         raise typer.Exit(code=1)
 
-    if not template.exists():
+    try:
+        template = _resolve_template(template_name)
+
+    except FileNotFoundError as error:
         console.print(
             "[bold red]Error:[/bold red] "
-            "ESP32 template not found."
+            f"{error}"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        load_board(
+            board,
+            PROJECT_ROOT / "boards"
+        )
+
+    except FileNotFoundError:
+        console.print(
+            "[bold red]Error:[/bold red] "
+            f"Board '{board}' not found."
         )
         raise typer.Exit(code=1)
 
@@ -68,18 +185,70 @@ def create(
         f"[bold cyan]{project_name}[/bold cyan]..."
     )
 
-    shutil.copytree(template, destination)
+    console.print("  [cyan]load template[/cyan]")
+
+    destination.mkdir(parents=True, exist_ok=False)
+
+    console.print("  [cyan]create directory[/cyan]")
+
+    (destination / "include").mkdir()
+    (destination / "lib").mkdir()
+    (destination / "test").mkdir()
+    (destination / "generated").mkdir()
+
+    shutil.copytree(
+        template / "src",
+        destination / "src"
+    )
+
+    console.print("  [cyan]copy template source[/cyan]")
+
+    _copy_sdk(destination)
+
+    console.print("  [cyan]copy lib src[/cyan]")
+
+    _write_platformio_ini(destination)
+
+    console.print("  [cyan]generate platformio.ini[/cyan]")
+
+    _write_robocek_yaml(
+        destination,
+        project_name,
+        template_name,
+        board
+    )
+
+    console.print("  [cyan]generate robocek.yaml[/cyan]")
 
     console.print()
     console.print("[bold green]✓ Project created successfully![/bold green]")
     console.print()
     console.print(f"  Project : {project_name}")
-    console.print("  Board   : ESP32")
+    console.print(f"  Template: {template_name}")
+    console.print(f"  Board   : {board}")
     console.print("  Framework: Arduino")
     console.print()
     console.print("Next:")
     console.print(f"  cd {project_name}")
     console.print("  robocek build")
+
+
+@template_app.command("list")
+def template_list():
+    """List available project templates."""
+
+    templates = _available_templates()
+
+    console.print()
+    console.print("[bold cyan]Available ROBOCEK Templates[/bold cyan]")
+    console.print()
+
+    if not templates:
+        console.print("[yellow]No templates found.[/yellow]")
+        return
+
+    for template in templates:
+        console.print(f"[bold green]{template.name}[/bold green]")
 
 @app.command()
 def build():
