@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { OutputLine } from '../types';
 
 interface OutputPanelProps {
@@ -8,6 +8,8 @@ interface OutputPanelProps {
   onTabChange: (tab: 'output' | 'monitor') => void;
   onClearOutput: () => void;
   onClearMonitor: () => void;
+  isMonitoring: boolean;
+  onSendSerial: (data: string) => void;
 }
 
 const LINE_COLORS: Record<OutputLine['type'], string> = {
@@ -25,9 +27,13 @@ export function OutputPanel({
   onTabChange,
   onClearOutput,
   onClearMonitor,
+  isMonitoring,
+  onSendSerial,
 }: OutputPanelProps) {
   const outputRef = useRef<HTMLDivElement>(null);
   const monitorRef = useRef<HTMLDivElement>(null);
+  const sendRef = useRef<HTMLInputElement>(null);
+  const [sendInput, setSendInput] = useState('');
 
   // Auto-scroll to bottom when new lines arrive
   useEffect(() => {
@@ -41,6 +47,20 @@ export function OutputPanel({
       monitorRef.current.scrollTop = monitorRef.current.scrollHeight;
     }
   }, [monitorLines, activeTab]);
+
+  // Focus send input when switching to monitor tab while active
+  useEffect(() => {
+    if (activeTab === 'monitor' && isMonitoring) {
+      sendRef.current?.focus();
+    }
+  }, [activeTab, isMonitoring]);
+
+  const handleSend = () => {
+    const text = sendInput.trim();
+    if (!text) return;
+    onSendSerial(text);
+    setSendInput('');
+  };
 
   const lines = activeTab === 'output' ? outputLines : monitorLines;
   const onClear = activeTab === 'output' ? onClearOutput : onClearMonitor;
@@ -123,6 +143,35 @@ export function OutputPanel({
           ))
         )}
       </div>
+
+      {/* Serial send bar — shown only in monitor tab while connected */}
+      {activeTab === 'monitor' && (
+        <div style={{ ...s.sendBar, opacity: isMonitoring ? 1 : 0.4, pointerEvents: isMonitoring ? 'auto' : 'none' }}>
+          <span style={s.sendPrompt}>&gt;</span>
+          <input
+            ref={sendRef}
+            style={s.sendInput}
+            value={sendInput}
+            onChange={e => setSendInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
+            placeholder={isMonitoring ? 'Send to device...' : 'Not connected'}
+            disabled={!isMonitoring}
+            spellCheck={false}
+            autoComplete="off"
+          />
+          <button
+            style={{ ...s.sendBtn, opacity: sendInput.trim() ? 1 : 0.4 }}
+            onClick={handleSend}
+            disabled={!isMonitoring || !sendInput.trim()}
+            title="Send (Enter)"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -223,5 +272,46 @@ const s: Record<string, React.CSSProperties> = {
     color: 'var(--text-muted)',
     fontStyle: 'italic',
     fontFamily: 'var(--font-ui)',
+  },
+  sendBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    padding: '6px 12px',
+    borderTop: '1px solid var(--border)',
+    background: 'var(--bg-panel)',
+    flexShrink: 0,
+    transition: 'opacity var(--t)',
+  },
+  sendPrompt: {
+    fontFamily: 'var(--font-code)',
+    fontSize: 13,
+    color: 'var(--success)',
+    userSelect: 'none',
+    flexShrink: 0,
+  },
+  sendInput: {
+    flex: 1,
+    background: 'transparent',
+    border: 'none',
+    outline: 'none',
+    fontFamily: 'var(--font-code)',
+    fontSize: 12,
+    color: 'var(--text-primary)',
+    padding: '2px 0',
+  },
+  sendBtn: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 26,
+    height: 26,
+    border: 'none',
+    borderRadius: 'var(--r-sm)',
+    background: 'var(--success-dim)',
+    color: 'var(--success)',
+    cursor: 'pointer',
+    flexShrink: 0,
+    transition: 'opacity var(--t)',
   },
 };

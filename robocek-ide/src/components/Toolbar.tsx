@@ -9,6 +9,7 @@ interface ToolbarProps {
   onBuild: () => void;
   onUpload: () => void;
   onMonitor: () => void;
+  onStopMonitor: () => void;
   onBack: () => void;
 }
 
@@ -21,6 +22,7 @@ export function Toolbar({
   onBuild,
   onUpload,
   onMonitor,
+  onStopMonitor,
   onBack,
 }: ToolbarProps) {
   const busy = isBuilding || isUploading || isMonitoring;
@@ -81,27 +83,31 @@ export function Toolbar({
           Upload
         </button>
 
-        <button
-          style={{ ...s.actionBtn, ...s.monitorBtn, ...(isMonitoring ? s.monitorActive : {}) }}
-          onClick={onMonitor}
-          disabled={isBuilding || isUploading}
-          title="Open serial monitor"
-        >
-          {isMonitoring ? (
-            <>
-              <span style={s.monitorDot} />
-              Monitoring
-            </>
-          ) : (
-            <>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="4 17 10 11 4 5"/>
-                <line x1="12" y1="19" x2="20" y2="19"/>
-              </svg>
-              Monitor
-            </>
-          )}
-        </button>
+        {isMonitoring ? (
+          <button
+            style={{ ...s.actionBtn, ...s.stopBtn }}
+            onClick={onStopMonitor}
+            title="Stop serial monitor"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+            </svg>
+            Stop
+          </button>
+        ) : (
+          <button
+            style={{ ...s.actionBtn, ...s.monitorBtn }}
+            onClick={onMonitor}
+            disabled={isBuilding || isUploading}
+            title="Open serial monitor"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <polyline points="4 17 10 11 4 5"/>
+              <line x1="12" y1="19" x2="20" y2="19"/>
+            </svg>
+            Monitor
+          </button>
+        )}
       </div>
 
       {/* Right: device indicator */}
@@ -219,19 +225,10 @@ const s: Record<string, React.CSSProperties> = {
     background: 'rgba(0,230,118,0.06)',
     color: 'var(--success)',
   },
-  monitorActive: {
-    borderColor: 'var(--success)',
-    background: 'var(--success-dim)',
-    color: 'var(--success)',
-    animation: 'pulseGlow 2s ease infinite',
-  },
-  monitorDot: {
-    width: 7,
-    height: 7,
-    borderRadius: '50%',
-    background: 'var(--success)',
-    animation: 'blink 1.2s ease infinite',
-    flexShrink: 0,
+  stopBtn: {
+    borderColor: 'rgba(255,82,82,0.35)',
+    background: 'rgba(255,82,82,0.1)',
+    color: 'var(--error)',
   },
   right: {
     display: 'flex',

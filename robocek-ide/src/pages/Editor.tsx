@@ -199,16 +199,53 @@ export function Editor({ projectPath, onBack }: EditorProps) {
 
   const handleMonitor = async () => {
     if (isMonitoring) return;
+
+    const device = devices[0];
+    if (!device) {
+      appendMonitor('No serial device connected.', 'error');
+      setActivePanel('monitor');
+      return;
+    }
+
+    const eventId = `robocek-serial-${Date.now()}`;
     setIsMonitoring(true);
     setActivePanel('monitor');
-    appendMonitor('📡 Serial monitor started...', 'info');
+    appendMonitor(`📡 Connecting to ${device.port} at 115200 baud...`, 'info');
 
-    const code = await runCommand('pio', ['device', 'monitor'], (text, isErr) => {
-      appendMonitor(text, classifyLine(text, isErr));
+    const unlisten = await listen<CommandOutput>(eventId, (e) => {
+      const out = e.payload;
+      if (out.is_done) {
+        unlisten();
+        appendMonitor('🔌 Serial monitor stopped.', 'info');
+        setIsMonitoring(false);
+      } else {
+        appendMonitor(out.line, 'plain');
+      }
     });
 
-    appendMonitor(`Monitor exited (code ${code})`, code === 0 ? 'info' : 'error');
-    setIsMonitoring(false);
+    try {
+      await invoke('start_serial_monitor', {
+        portName: device.port,
+        baudRate: 115200,
+        eventId,
+      });
+      appendMonitor(`✅ Connected to ${device.port}`, 'success');
+    } catch (err) {
+      unlisten();
+      appendMonitor(`❌ Failed to open port: ${err}`, 'error');
+      setIsMonitoring(false);
+    }
+  };
+
+  const handleStopMonitor = async () => {
+    await invoke('stop_serial_monitor').catch(() => {});
+    // isMonitoring will be set to false when the done event arrives
+  };
+
+  const handleSendSerial = async (data: string) => {
+    await invoke('write_serial', { data: data + '\n' }).catch((err) => {
+      appendMonitor(`Send error: ${err}`, 'error');
+    });
   };
 
   return (
@@ -222,6 +259,7 @@ export function Editor({ projectPath, onBack }: EditorProps) {
         onBuild={handleBuild}
         onUpload={handleUpload}
         onMonitor={handleMonitor}
+        onStopMonitor={handleStopMonitor}
         onBack={onBack}
       />
 
@@ -262,6 +300,8 @@ export function Editor({ projectPath, onBack }: EditorProps) {
               onTabChange={setActivePanel}
               onClearOutput={() => setOutputLines([])}
               onClearMonitor={() => setMonitorLines([])}
+              isMonitoring={isMonitoring}
+              onSendSerial={handleSendSerial}
             />
           </div>
         </div>

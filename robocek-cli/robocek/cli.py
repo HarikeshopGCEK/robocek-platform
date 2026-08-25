@@ -198,7 +198,7 @@ def create(
         raise typer.Exit(code=1)
 
     try:
-        load_board(
+        board_obj = load_board(
             board,
             PROJECT_ROOT / "boards"
         )
@@ -249,6 +249,10 @@ def create(
     )
 
     console.print("  [cyan]generate robocek.yaml[/cyan]")
+
+    generate_project_config(destination, board_obj)
+
+    console.print("  [cyan]generate robocek_config.h[/cyan]")
 
     console.print()
     console.print("[bold green]✓ Project created successfully![/bold green]")

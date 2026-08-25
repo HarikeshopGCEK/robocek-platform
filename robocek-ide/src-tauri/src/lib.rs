@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use tauri::Emitter;
+use std::sync::{Arc, Mutex};
+use tauri::{Emitter, State};
 
 // ============================================================
 // Data Types (serialized to JSON for the frontend)
@@ -50,6 +51,29 @@ pub struct CommandOutput {
     pub is_error: bool,
     pub is_done: bool,
     pub exit_code: Option<i32>,
+}
+
+// ============================================================
+// Serial Monitor State
+// ============================================================
+
+/// Shared state for the active serial monitor session.
+/// Holds an Arc<Mutex<Box<dyn serialport::SerialPort>>> so both
+/// the reader thread and the write/stop commands can access the port.
+pub struct SerialState {
+    /// The live port handle; None when monitor is not running.
+    pub port: Mutex<Option<Box<dyn serialport::SerialPort>>>,
+    /// Signal flag — set to true to ask the reader thread to exit.
+    pub stop_flag: Arc<std::sync::atomic::AtomicBool>,
+}
+
+impl SerialState {
+    fn new() -> Self {
+        Self {
+            port: Mutex::new(None),
+            stop_flag: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        }
+    }
 }
 
 // ============================================================
@@ -727,6 +751,109 @@ fn run_command(
 }
 
 // ============================================================
+// Native Serial Monitor Commands
+// ============================================================
+
+/// Open a serial port and stream every incoming line to the frontend
+/// via Tauri events named `event_id`. Sends `{ line, is_done: true }`
+/// when the port is closed (stop requested or disconnected).
+#[tauri::command]
+fn start_serial_monitor(
+    window: tauri::Window,
+    serial_state: State<'_, SerialState>,
+    port_name: String,
+    baud_rate: u32,
+    event_id: String,
+) -> Result<(), String> {
+    // Close any existing monitor first
+    {
+        let mut guard = serial_state.port.lock().unwrap();
+        *guard = None;
+    }
+
+    let port = serialport::new(&port_name, baud_rate)
+        .timeout(std::time::Duration::from_millis(500))
+        .open()
+        .map_err(|e| format!("Cannot open {}: {}", port_name, e))?;
+
+    // Clone for the reader thread
+    let port_clone = port.try_clone()
+        .map_err(|e| format!("Cannot clone port: {}", e))?;
+
+    let ev = event_id.clone();
+    let stop_flag = serial_state.stop_flag.clone();
+    stop_flag.store(false, std::sync::atomic::Ordering::Relaxed);
+    let stop_flag_clone = stop_flag.clone();
+
+    // Store the port in state so write/stop commands can use it
+    {
+        let mut guard = serial_state.port.lock().unwrap();
+        *guard = Some(port);
+    }
+
+    std::thread::spawn(move || {
+        let mut reader = BufReader::new(port_clone);
+        loop {
+            if stop_flag_clone.load(std::sync::atomic::Ordering::Relaxed) {
+                break;
+            }
+            let mut line = String::new();
+            match reader.read_line(&mut line) {
+                Ok(0) => break, // EOF / port closed
+                Ok(_) => {
+                    let trimmed = line.trim_end_matches(|c| c == '\r' || c == '\n').to_string();
+                    let _ = window.emit(&ev, CommandOutput {
+                        line: trimmed,
+                        is_error: false,
+                        is_done: false,
+                        exit_code: None,
+                    });
+                }
+                Err(ref e) if e.kind() == std::io::ErrorKind::TimedOut => {
+                    // Read timeout — normal on idle port, keep looping
+                    continue;
+                }
+                Err(_) => break, // Real error (port closed/disconnected)
+            }
+        }
+        // Signal done
+        let _ = window.emit(&ev, CommandOutput {
+            line: String::new(),
+            is_error: false,
+            is_done: true,
+            exit_code: Some(0),
+        });
+    });
+
+    Ok(())
+}
+
+/// Stop the active serial monitor by setting the stop flag and dropping the port handle.
+#[tauri::command]
+fn stop_serial_monitor(serial_state: State<'_, SerialState>) {
+    serial_state.stop_flag.store(true, std::sync::atomic::Ordering::Relaxed);
+    let mut guard = serial_state.port.lock().unwrap();
+    *guard = None; // dropping closes the port, causing the reader thread to get an error/EOF
+}
+
+/// Write a string to the active serial port (for interactive monitor send).
+#[tauri::command]
+fn write_serial(
+    serial_state: State<'_, SerialState>,
+    data: String,
+) -> Result<(), String> {
+    let mut guard = serial_state.port.lock().unwrap();
+    if let Some(port) = guard.as_mut() {
+        port.write_all(data.as_bytes())
+            .map_err(|e| format!("Write failed: {}", e))?;
+        port.flush().map_err(|e| format!("Flush failed: {}", e))?;
+        Ok(())
+    } else {
+        Err("No serial monitor is running".to_string())
+    }
+}
+
+// ============================================================
 // App Entry Point
 // ============================================================
 
@@ -735,6 +862,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .manage(SerialState::new())
         .invoke_handler(tauri::generate_handler![
             get_platform_root,
             list_templates,
@@ -747,6 +875,9 @@ pub fn run() {
             create_project,
             open_folder_dialog,
             run_command,
+            start_serial_monitor,
+            stop_serial_monitor,
+            write_serial,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
