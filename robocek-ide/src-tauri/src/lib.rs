@@ -80,8 +80,13 @@ impl SerialState {
 // Platform Root Detection
 // ============================================================
 
+/// Locate the robocek-platform root directory containing boards/, sdk/, etc.
+/// Strategy:
+///   1. Walk up from cwd          — works in `tauri dev`
+///   2. Walk up from exe location — fallback for dev
+///   3. Check Tauri resource dir  — works in packaged .exe / .deb builds
 fn find_platform_root() -> Option<PathBuf> {
-    // Try current directory and its parents (works in `tauri dev`)
+    // Strategy 1: Walk up from current working directory
     if let Ok(cwd) = std::env::current_dir() {
         let mut current = cwd;
         for _ in 0..10 {
@@ -96,7 +101,7 @@ fn find_platform_root() -> Option<PathBuf> {
         }
     }
 
-    // Try from executable location upwards (works in installed builds)
+    // Strategy 2: Walk up from executable location
     if let Ok(exe) = std::env::current_exe() {
         if let Some(start) = exe.parent() {
             let mut current = start.to_path_buf();
@@ -113,7 +118,26 @@ fn find_platform_root() -> Option<PathBuf> {
         }
     }
 
+    // Strategy 3: Tauri resource directory (packaged builds)
+    // boards/sdk/templates/examples are bundled under resources/platform/
+    if let Ok(exe) = std::env::current_exe() {
+        // In packaged Tauri apps the resources sit next to (or inside) the exe bundle.
+        // Common locations: <exe_dir>/../Resources/platform (macOS),
+        //                   <exe_dir>/resources/platform (Windows/Linux)
+        let candidates = [
+            exe.parent().map(|p| p.join("resources").join("platform")),
+            exe.parent().and_then(|p| p.parent()).map(|p| p.join("Resources").join("platform")),
+            exe.parent().map(|p| p.join("platform")),
+        ];
+        for candidate in candidates.into_iter().flatten() {
+            if candidate.join("boards").exists() && candidate.join("sdk").exists() {
+                return Some(candidate);
+            }
+        }
+    }
+
     None
+
 }
 
 // ============================================================
