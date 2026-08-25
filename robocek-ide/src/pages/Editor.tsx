@@ -314,7 +314,6 @@ export function Editor({ projectPath, onBack }: EditorProps) {
 function SidebarResizer({ onResize }: { onResize: (w: number) => void }) {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
-    const startX = e.clientX;
     const onMove = (ev: MouseEvent) => {
       const newW = Math.max(160, Math.min(400, ev.clientX));
       onResize(newW);
