@@ -37,23 +37,23 @@ void loop()
     {
         // No line detected.
         // For the first version, keep moving forward.
-        RC::Motor.set(BASE_SPEED, BASE_SPEED);
+        RC::Motor.forward(BASE_SPEED);
     }
     else if (!left && right)
     {
-        // Line is on the right.
-        RC::Motor.set(BASE_SPEED, TURN_SPEED);
+        // Line is on the right — steer right.
+        RC::Motor.right(TURN_SPEED);
     }
     else if (left && !right)
     {
-        // Line is on the left.
-        RC::Motor.set(TURN_SPEED, BASE_SPEED);
+        // Line is on the left — steer left.
+        RC::Motor.left(TURN_SPEED);
     }
     else
     {
         // Both sensors detect the line.
         // Treat it as straight for now.
-        RC::Motor.set(BASE_SPEED, BASE_SPEED);
+        RC::Motor.forward(BASE_SPEED);
     }
 
     delay(10);

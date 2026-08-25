@@ -1,0 +1,3 @@
+name: empty-smoke
+template: empty
+board: robocek-esp32-v1

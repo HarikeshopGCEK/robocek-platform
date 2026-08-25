@@ -1,9 +1,11 @@
 from pathlib import Path
+import sys
 import shutil
 import subprocess
 import serial.tools.list_ports
 import typer
 from rich.console import Console
+from rich.markup import escape
 from .board import load_board
 from .generator import generate_motor_config
 from .project import Project
@@ -26,28 +28,44 @@ app.add_typer(
     name="template"
 )
 app.add_typer(board_app)
-console = Console()
+
+# Ensure stdout/stderr use UTF-8 on Windows (default is CP1252 which cannot
+# encode unicode characters like ✓ used in Rich output).
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
+console = Console(highlight=False, legacy_windows=False)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 TEMPLATES_DIR = PROJECT_ROOT / "templates"
 EXAMPLES_DIR = PROJECT_ROOT / "examples"
 
+TEMPLATE_ALIASES = {
+    "empty": TEMPLATES_DIR / "esp32-basic"
+}
+
 
 def _available_templates() -> list[Path]:
-    if not EXAMPLES_DIR.exists():
-        return []
-
     templates = []
 
-    for item in EXAMPLES_DIR.iterdir():
-        if not item.is_dir():
-            continue
+    if EXAMPLES_DIR.exists():
+        for item in EXAMPLES_DIR.iterdir():
+            if not item.is_dir():
+                continue
 
-        main_cpp = item / "src" / "main.cpp"
+            main_cpp = item / "src" / "main.cpp"
 
+            if main_cpp.exists():
+                templates.append(item)
+
+    # Expose built-in aliases as virtual template entries.
+    for alias, alias_path in TEMPLATE_ALIASES.items():
+        main_cpp = alias_path / "src" / "main.cpp"
         if main_cpp.exists():
-            templates.append(item)
+            templates.append(Path(alias))
 
     return sorted(
         templates,
@@ -56,6 +74,18 @@ def _available_templates() -> list[Path]:
 
 
 def _resolve_template(template_name: str) -> Path:
+    alias_path = TEMPLATE_ALIASES.get(template_name)
+
+    if alias_path is not None:
+        main_cpp = alias_path / "src" / "main.cpp"
+
+        if not alias_path.exists() or not main_cpp.exists():
+            raise FileNotFoundError(
+                f"Template '{template_name}' not found."
+            )
+
+        return alias_path
+
     template_dir = EXAMPLES_DIR / template_name
 
     main_cpp = template_dir / "src" / "main.cpp"
@@ -290,12 +320,12 @@ def build():
 
         console.print(
             f"[bold green]✓ Board:[/bold green] "
-            f"{board.name}"
+            f"{escape(board.name)}"
         )
 
         console.print(
             f"[bold green]✓ Configuration:[/bold green] "
-            f"{output}"
+            f"{escape(str(output))}"
         )
 
     except Exception as error:
@@ -305,7 +335,7 @@ def build():
         )
 
         console.print(
-            f"  {error}"
+            f"  {escape(str(error))}"
         )
 
         raise typer.Exit(code=1)
@@ -407,7 +437,7 @@ def upload():
 
         console.print(
             f"[bold green]✓ Board:[/bold green] "
-            f"{board.name}"
+            f"{escape(board.name)}"
         )
 
     except Exception as error:
@@ -417,7 +447,7 @@ def upload():
         )
 
         console.print(
-            f"  {error}"
+            f"  {escape(str(error))}"
         )
 
         raise typer.Exit(code=1)

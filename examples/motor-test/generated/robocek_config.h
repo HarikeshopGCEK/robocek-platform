@@ -24,3 +24,11 @@
 #define RC_LINE_SENSOR_LEFT 32
 #define RC_LINE_SENSOR_RIGHT 35
 #define RC_LINE_SENSOR_ACTIVE HIGH
+
+// ========================================
+// Ultrasonic Sensor Configuration
+// ========================================
+#define RC_ULTRASONIC_LEFT_TRIGGER 32
+#define RC_ULTRASONIC_LEFT_ECHO 35
+#define RC_ULTRASONIC_RIGHT_TRIGGER 5
+#define RC_ULTRASONIC_RIGHT_ECHO 34
