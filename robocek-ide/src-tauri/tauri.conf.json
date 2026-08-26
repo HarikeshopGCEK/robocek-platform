@@ -35,10 +35,7 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../../robocek-cli/robocek/boards": "platform/boards",
-      "../../robocek-cli/robocek/sdk": "platform/sdk",
-      "../../robocek-cli/robocek/templates": "platform/templates",
-      "../../robocek-cli/robocek/examples": "platform/examples"
+      "../../robocek-cli": "platform/robocek-cli"
     }
   }
 }

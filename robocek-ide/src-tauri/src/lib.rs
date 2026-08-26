@@ -121,7 +121,7 @@ fn find_platform_root() -> Option<PathBuf> {
     }
 
     // Strategy 3: Tauri resource directory (packaged builds)
-    // boards/sdk/templates/examples are bundled under resources/platform/
+    // boards/sdk/templates/examples are bundled under resources/platform/robocek-cli/robocek
     if let Ok(exe) = std::env::current_exe() {
         // In packaged Tauri apps the resources sit next to (or inside) the exe bundle.
         // Common locations: <exe_dir>/../Resources/platform (macOS),
@@ -132,8 +132,9 @@ fn find_platform_root() -> Option<PathBuf> {
             exe.parent().map(|p| p.join("platform")),
         ];
         for candidate in candidates.into_iter().flatten() {
-            if candidate.join("boards").exists() && candidate.join("sdk").exists() {
-                return Some(candidate);
+            let pkg_dir = candidate.join("robocek-cli").join("robocek");
+            if pkg_dir.join("boards").exists() && pkg_dir.join("sdk").exists() {
+                return Some(pkg_dir);
             }
         }
     }
@@ -666,6 +667,264 @@ fn open_folder_dialog(app: tauri::AppHandle) -> Result<Option<String>, String> {
     Ok(folder.map(|p| p.to_string()))
 }
 
+fn get_robocek_env_paths() -> Option<(PathBuf, PathBuf, PathBuf)> {
+    let home = std::env::var("USERPROFILE")
+        .or_else(|_| std::env::var("HOME"))
+        .ok()
+        .map(PathBuf::from)?;
+    let robocek_dir = home.join(".robocek");
+    let penv_dir = robocek_dir.join("penv");
+    #[cfg(target_os = "windows")]
+    let bin_dir = penv_dir.join("Scripts");
+    #[cfg(not(target_os = "windows"))]
+    let bin_dir = penv_dir.join("bin");
+    Some((robocek_dir, penv_dir, bin_dir))
+}
+
+fn check_python_installed() -> bool {
+    if let Ok(output) = Command::new("python").arg("--version").output() {
+        if output.status.success() {
+            let version_str = String::from_utf8_lossy(&output.stdout);
+            if parse_and_check_python_version(&version_str) {
+                return true;
+            }
+        }
+    }
+    if let Ok(output) = Command::new("python3").arg("--version").output() {
+        if output.status.success() {
+            let version_str = String::from_utf8_lossy(&output.stdout);
+            if parse_and_check_python_version(&version_str) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn parse_and_check_python_version(version_str: &str) -> bool {
+    let parts: Vec<&str> = version_str.split_whitespace().collect();
+    if parts.len() >= 2 {
+        let ver = parts[1];
+        let ver_parts: Vec<&str> = ver.split('.').collect();
+        if ver_parts.len() >= 2 {
+            if let (Ok(major), Ok(minor)) = (ver_parts[0].parse::<i32>(), ver_parts[1].parse::<i32>()) {
+                return major == 3 && minor >= 10;
+            }
+        }
+    }
+    false
+}
+
+#[derive(serde::Serialize, Clone, Debug)]
+pub struct BootstrapStatus {
+    pub is_ready: bool,
+    pub python_ok: bool,
+    pub pio_ok: bool,
+    pub cli_ok: bool,
+    pub message: String,
+}
+
+#[tauri::command]
+fn check_bootstrap_status() -> Result<BootstrapStatus, String> {
+    let paths = match get_robocek_env_paths() {
+        Some(p) => p,
+        None => return Err("Could not determine user home directory".to_string()),
+    };
+    let (_robocek_dir, _penv_dir, bin_dir) = paths;
+
+    #[cfg(target_os = "windows")]
+    let pio_exe = bin_dir.join("pio.exe");
+    #[cfg(not(target_os = "windows"))]
+    let pio_exe = bin_dir.join("pio");
+
+    #[cfg(target_os = "windows")]
+    let robocek_exe = bin_dir.join("robocek.exe");
+    #[cfg(not(target_os = "windows"))]
+    let robocek_exe = bin_dir.join("robocek");
+
+    let pio_ok = pio_exe.exists();
+    let cli_ok = robocek_exe.exists();
+    let python_ok = check_python_installed();
+
+    let is_ready = pio_ok && cli_ok;
+    let message = if is_ready {
+        "ROBOCEK environment is ready.".to_string()
+    } else if !python_ok {
+        "Python 3.10+ is required but was not found.".to_string()
+    } else {
+        "ROBOCEK environment needs setup.".to_string()
+    };
+
+    Ok(BootstrapStatus {
+        is_ready,
+        python_ok,
+        pio_ok,
+        cli_ok,
+        message,
+    })
+}
+
+#[tauri::command]
+fn run_bootstrap(window: tauri::Window) {
+    std::thread::spawn(move || {
+        let emit_log = |msg: &str, is_error: bool| {
+            let _ = window.emit("bootstrap-progress", CommandOutput {
+                line: msg.to_string(),
+                is_error,
+                is_done: false,
+                exit_code: None,
+            });
+        };
+
+        emit_log("⚡ Starting environment bootstrap...", false);
+
+        // 1. Check Python
+        let mut python_path = "python".to_string();
+        if !check_python_installed() {
+            emit_log("Python 3.10+ not detected on your system.", false);
+            #[cfg(target_os = "windows")]
+            {
+                emit_log("Downloading Python 3.11 installer...", false);
+                let home = std::env::var("USERPROFILE").unwrap_or_default();
+                let dest_installer = PathBuf::from(home).join(".robocek").join("python-installer.exe");
+                
+                // Ensure directory exists
+                let _ = std::fs::create_dir_all(dest_installer.parent().unwrap());
+
+                let download_script = format!(
+                    "$ProgressPreference = 'SilentlyContinue'; \
+                     Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe' -OutFile '{}';",
+                    dest_installer.display()
+                );
+
+                let output = Command::new("powershell")
+                    .args(&["-NoProfile", "-Command", &download_script])
+                    .output();
+
+                match output {
+                    Ok(out) if out.status.success() => {
+                        emit_log("Installing Python silently (this may take a minute)...", false);
+                        let install_output = Command::new(&dest_installer)
+                            .args(&["/quiet", "InstallAllUsers=0", "PrependPath=1"])
+                            .status();
+
+                        let _ = std::fs::remove_file(&dest_installer);
+
+                        match install_output {
+                            Ok(status) if status.success() => {
+                                emit_log("Python installed successfully!", false);
+                                std::thread::sleep(std::time::Duration::from_secs(2));
+                                python_path = "python".to_string();
+                            }
+                            _ => {
+                                emit_log("❌ Python installation failed. Please install Python 3.10+ manually.", true);
+                                return;
+                            }
+                        }
+                    }
+                    _ => {
+                        emit_log("❌ Failed to download Python. Please check your internet connection.", true);
+                        return;
+                    }
+                }
+            }
+            #[cfg(not(target_os = "windows"))]
+            {
+                emit_log("❌ Python 3.10+ is missing. Please install Python 3.10+ using your package manager.", true);
+                return;
+            }
+        } else {
+            if Command::new("python").arg("--version").output().is_ok() {
+                python_path = "python".to_string();
+            } else {
+                python_path = "python3".to_string();
+            }
+        }
+
+        // 2. Create Virtual Environment
+        emit_log("📁 Creating isolated virtual environment in ~/.robocek/penv...", false);
+        let paths = match get_robocek_env_paths() {
+            Some(p) => p,
+            None => {
+                emit_log("❌ Could not determine user home directory.", true);
+                return;
+            }
+        };
+        let (robocek_dir, penv_dir, bin_dir) = paths;
+
+        let _ = std::fs::create_dir_all(&robocek_dir);
+
+        let venv_status = Command::new(&python_path)
+            .args(&["-m", "venv", &penv_dir.to_string_lossy()])
+            .status();
+
+        match venv_status {
+            Ok(status) if status.success() => {
+                emit_log("Virtual environment created successfully.", false);
+            }
+            _ => {
+                emit_log("❌ Failed to create virtual environment.", true);
+                return;
+            }
+        }
+
+        // Determine pip path
+        #[cfg(target_os = "windows")]
+        let pip_cmd = bin_dir.join("pip.exe");
+        #[cfg(not(target_os = "windows"))]
+        let pip_cmd = bin_dir.join("pip");
+
+        // 3. Install PlatformIO
+        emit_log("📦 Installing PlatformIO Core (this may take a minute)...", false);
+        let pio_status = Command::new(&pip_cmd)
+            .args(&["install", "platformio"])
+            .status();
+
+        match pio_status {
+            Ok(status) if status.success() => {
+                emit_log("PlatformIO Core installed successfully.", false);
+            }
+            _ => {
+                emit_log("❌ Failed to install PlatformIO Core.", true);
+                return;
+            }
+        }
+
+        // 4. Install robocek-cli
+        emit_log("📦 Bundling and installing robocek-cli package...", false);
+
+        let platform_root = find_platform_root();
+        if platform_root.is_none() {
+            emit_log("❌ Bundled robocek-cli resources not found in app package.", true);
+            return;
+        }
+        let cli_dir = platform_root.unwrap().parent().unwrap().to_path_buf();
+
+        let cli_status = Command::new(&pip_cmd)
+            .args(&["install", &cli_dir.to_string_lossy()])
+            .status();
+
+        match cli_status {
+            Ok(status) if status.success() => {
+                emit_log("robocek-cli installed successfully.", false);
+            }
+            _ => {
+                emit_log("❌ Failed to install robocek-cli package.", true);
+                return;
+            }
+        }
+
+        emit_log("🎉 Bootstrap completed! ROBOCEK environment is ready to use.", false);
+        
+        let _ = window.emit("bootstrap-progress", CommandOutput {
+            line: String::new(),
+            is_error: false,
+            is_done: true,
+            exit_code: Some(0),
+        });
+    });
+}
+
 /// Run a shell command and stream its stdout/stderr to the frontend via Tauri events.
 /// Runs entirely on a background thread so the Tauri invoke thread is never blocked.
 #[tauri::command]
@@ -677,7 +936,22 @@ fn run_command(
     event_id: String,
 ) {
     std::thread::spawn(move || {
-        let mut child = match Command::new(&program)
+        let mut final_program = program.clone();
+        if program == "pio" || program == "robocek" {
+            if let Some((_robocek_dir, _penv_dir, bin_dir)) = get_robocek_env_paths() {
+                #[cfg(target_os = "windows")]
+                let exe_name = format!("{}.exe", program);
+                #[cfg(not(target_os = "windows"))]
+                let exe_name = program.clone();
+
+                let local_path = bin_dir.join(exe_name);
+                if local_path.exists() {
+                    final_program = local_path.to_string_lossy().to_string();
+                }
+            }
+        }
+
+        let mut child = match Command::new(&final_program)
             .args(&args)
             .current_dir(&cwd)
             .stdout(Stdio::piped())
@@ -904,6 +1178,8 @@ pub fn run() {
             start_serial_monitor,
             stop_serial_monitor,
             write_serial,
+            check_bootstrap_status,
+            run_bootstrap,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

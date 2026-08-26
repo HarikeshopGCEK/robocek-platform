@@ -59,4 +59,4 @@ export interface RecentProject {
   lastOpened: number;
 }
 
-export type AppScreen = 'welcome' | 'new-project' | 'editor';
+export type AppScreen = 'bootstrap' | 'welcome' | 'new-project' | 'editor';
