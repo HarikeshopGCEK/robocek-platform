@@ -90,8 +90,9 @@ fn find_platform_root() -> Option<PathBuf> {
     if let Ok(cwd) = std::env::current_dir() {
         let mut current = cwd;
         for _ in 0..10 {
-            if current.join("boards").exists() && current.join("sdk").exists() {
-                return Some(current);
+            let pkg_dir = current.join("robocek-cli").join("robocek");
+            if pkg_dir.join("boards").exists() && pkg_dir.join("sdk").exists() {
+                return Some(pkg_dir);
             }
             if let Some(parent) = current.parent() {
                 current = parent.to_path_buf();
@@ -106,8 +107,9 @@ fn find_platform_root() -> Option<PathBuf> {
         if let Some(start) = exe.parent() {
             let mut current = start.to_path_buf();
             for _ in 0..10 {
-                if current.join("boards").exists() && current.join("sdk").exists() {
-                    return Some(current);
+                let pkg_dir = current.join("robocek-cli").join("robocek");
+                if pkg_dir.join("boards").exists() && pkg_dir.join("sdk").exists() {
+                    return Some(pkg_dir);
                 }
                 if let Some(parent) = current.parent() {
                     current = parent.to_path_buf();

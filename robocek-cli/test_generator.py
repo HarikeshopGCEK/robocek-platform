@@ -4,7 +4,7 @@ from robocek.board import load_board
 from robocek.generator import generate_motor_config
 
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parent / "robocek"
 
 boards_dir = ROOT / "boards"
 

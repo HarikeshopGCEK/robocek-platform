@@ -17,3 +17,14 @@ dependencies = [
 
 [project.scripts]
 robocek = "robocek.cli:app"
+
+[tool.setuptools]
+packages = ["robocek"]
+
+[tool.setuptools.package-data]
+robocek = [
+    "boards/**/*",
+    "sdk/**/*",
+    "templates/**/*",
+    "examples/**/*"
+]

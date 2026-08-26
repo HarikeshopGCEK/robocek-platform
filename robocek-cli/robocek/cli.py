@@ -39,7 +39,7 @@ if hasattr(sys.stderr, "reconfigure"):
 console = Console(highlight=False, legacy_windows=False)
 
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = Path(__file__).resolve().parent
 TEMPLATES_DIR = PROJECT_ROOT / "templates"
 EXAMPLES_DIR = PROJECT_ROOT / "examples"
 

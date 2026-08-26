@@ -35,10 +35,10 @@
       "icons/icon.ico"
     ],
     "resources": {
-      "../../boards": "platform/boards",
-      "../../sdk": "platform/sdk",
-      "../../templates": "platform/templates",
-      "../../examples": "platform/examples"
+      "../../robocek-cli/robocek/boards": "platform/boards",
+      "../../robocek-cli/robocek/sdk": "platform/sdk",
+      "../../robocek-cli/robocek/templates": "platform/templates",
+      "../../robocek-cli/robocek/examples": "platform/examples"
     }
   }
 }
