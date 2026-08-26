@@ -1,5 +1,12 @@
 from pathlib import Path
 import sys
+import os
+
+# Ensure the virtual environment's Scripts/bin directory is in PATH for subprocesses
+bindir = str(Path(sys.executable).parent)
+if bindir not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = bindir + os.pathsep + os.environ.get("PATH", "")
+
 import shutil
 import subprocess
 import serial.tools.list_ports
