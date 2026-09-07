@@ -2,5 +2,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    robocek_ide_lib::run()
+    robocek_studio_lib::run()
 }

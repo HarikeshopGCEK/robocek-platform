@@ -14,15 +14,15 @@ function getLanguage(filename: string): string {
   const ext = filename.split('.').pop()?.toLowerCase();
   switch (ext) {
     case 'cpp': case 'cc': case 'cxx': return 'cpp';
-    case 'c':   return 'c';
-    case 'h':   case 'hpp': return 'cpp';
-    case 'yaml':case 'yml': return 'yaml';
+    case 'c': return 'c';
+    case 'h': case 'hpp': return 'cpp';
+    case 'yaml': case 'yml': return 'yaml';
     case 'json': return 'json';
-    case 'ini':  return 'ini';
-    case 'md':   return 'markdown';
-    case 'rs':   return 'rust';
-    case 'py':   return 'python';
-    default:     return 'plaintext';
+    case 'ini': return 'ini';
+    case 'md': return 'markdown';
+    case 'rs': return 'rust';
+    case 'py': return 'python';
+    default: return 'plaintext';
   }
 }
 
@@ -88,17 +88,17 @@ export function CodeEditor({
                   { token: 'type', foreground: '7C3AED' },
                 ],
                 colors: {
-                  'editor.background':           '#0E1118',
-                  'editor.foreground':           '#E2E8F4',
+                  'editor.background': '#0E1118',
+                  'editor.foreground': '#E2E8F4',
                   'editorLineNumber.foreground': '#2D3748',
                   'editorLineNumber.activeForeground': '#4A5568',
                   'editor.lineHighlightBackground': '#141720',
-                  'editorCursor.foreground':     '#00C8FF',
-                  'editor.selectionBackground':  '#00C8FF22',
-                  'editorGutter.background':     '#0E1118',
-                  'editorWidget.background':     '#141720',
+                  'editorCursor.foreground': '#00C8FF',
+                  'editor.selectionBackground': '#00C8FF22',
+                  'editorGutter.background': '#0E1118',
+                  'editorWidget.background': '#141720',
                   'editorSuggestWidget.background': '#141720',
-                  'editorSuggestWidget.border':  '#2A2D3A',
+                  'editorSuggestWidget.border': '#2A2D3A',
                 },
               });
               monaco.editor.setTheme('robocek-dark');
@@ -137,7 +137,7 @@ export function CodeEditor({
       ) : (
         <div style={s.emptyState}>
           <div style={s.emptyIcon}>⚡</div>
-          <div style={s.emptyTitle}>ROBOCEK IDE</div>
+          <div style={s.emptyTitle}>ROBOCEK Studio</div>
           <div style={s.emptyHint}>Select a file from the explorer to start editing</div>
           <div style={s.emptyShortcut}>
             <kbd style={s.kbd}>Ctrl</kbd><span>+</span><kbd style={s.kbd}>S</kbd>

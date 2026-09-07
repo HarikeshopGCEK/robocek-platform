@@ -98,7 +98,7 @@ export function Welcome({ onNewProject, onOpenProject }: WelcomeProps) {
       {/* Hero */}
       <div style={styles.hero}>
         <div style={styles.logoMark}>⚡</div>
-        <h1 style={styles.logo}>ROBOCEK IDE</h1>
+        <h1 style={styles.logo}>ROBOCEK Studio</h1>
         <p style={styles.tagline}>Embedded Robotics Development Platform for ESP32</p>
       </div>
 
@@ -118,7 +118,7 @@ export function Welcome({ onNewProject, onOpenProject }: WelcomeProps) {
             <div style={styles.cardDesc}>Create from a template</div>
           </div>
           <svg style={styles.cardArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
+            <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </button>
 
@@ -142,7 +142,7 @@ export function Welcome({ onNewProject, onOpenProject }: WelcomeProps) {
             <div style={styles.cardDesc}>Browse for a ROBOCEK project</div>
           </div>
           <svg style={styles.cardArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
+            <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </button>
       </div>
@@ -151,7 +151,7 @@ export function Welcome({ onNewProject, onOpenProject }: WelcomeProps) {
       {error && (
         <div style={styles.errorBanner}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           {error}
         </div>

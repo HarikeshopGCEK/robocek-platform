@@ -1,12 +1,12 @@
 [package]
-name = "robocek-ide"
+name = "robocek-studio"
 version = "0.1.0"
 description = "ROBOCEK Embedded Robotics IDE"
 authors = ["you"]
 edition = "2021"
 
 [lib]
-name = "robocek_ide_lib"
+name = "robocek_studio_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
