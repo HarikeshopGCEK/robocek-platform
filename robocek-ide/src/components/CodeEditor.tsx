@@ -137,7 +137,7 @@ export function CodeEditor({
       ) : (
         <div style={s.emptyState}>
           <div style={s.emptyIcon}>⚡</div>
-          <div style={s.emptyTitle}>ROBOCEK Studio</div>
+          <div style={s.emptyTitle}>ROBOCEKStudio</div>
           <div style={s.emptyHint}>Select a file from the explorer to start editing</div>
           <div style={s.emptyShortcut}>
             <kbd style={s.kbd}>Ctrl</kbd><span>+</span><kbd style={s.kbd}>S</kbd>
