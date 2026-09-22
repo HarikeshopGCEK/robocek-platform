@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { Logo } from '../components/Logo';
 import type { RecentProject } from '../types';
 
 interface WelcomeProps {
@@ -97,8 +98,7 @@ export function Welcome({ onNewProject, onOpenProject }: WelcomeProps) {
 
       {/* Hero */}
       <div style={styles.hero}>
-        <div style={styles.logoMark}>⚡</div>
-        <h1 style={styles.logo}>ROBOCEK Studio</h1>
+        <Logo size="xl" glow={true} style={{ marginBottom: 16 }} />
         <p style={styles.tagline}>Embedded Robotics Development Platform for ESP32</p>
       </div>
 

@@ -1,4 +1,5 @@
 import MonacoEditor from '@monaco-editor/react';
+import { Logo } from './Logo';
 import type { OpenFile } from '../types';
 
 interface CodeEditorProps {
@@ -136,8 +137,7 @@ export function CodeEditor({
         </div>
       ) : (
         <div style={s.emptyState}>
-          <div style={s.emptyIcon}>⚡</div>
-          <div style={s.emptyTitle}>ROBOCEK Studio</div>
+          <Logo size="lg" glow={false} style={{ opacity: 0.35, marginBottom: 8 }} />
           <div style={s.emptyHint}>Select a file from the explorer to start editing</div>
           <div style={s.emptyShortcut}>
             <kbd style={s.kbd}>Ctrl</kbd><span>+</span><kbd style={s.kbd}>S</kbd>

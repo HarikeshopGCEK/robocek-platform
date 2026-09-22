@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { Logo } from '../components/Logo';
 import type { CommandOutput } from '../types';
 
 interface BootstrapProps {
@@ -83,7 +84,7 @@ export function Bootstrap({ onDone }: BootstrapProps) {
 
       <div style={s.container}>
         <div style={s.header}>
-          <div style={s.logoMark}>⚡</div>
+          <Logo size="lg" glow={true} style={{ marginBottom: 12 }} />
           <h1 style={s.title}>System Setup</h1>
           <p style={s.subtitle}>{statusMessage}</p>
         </div>

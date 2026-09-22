@@ -403,3 +403,17 @@ body {
   background: var(--border);
   margin: 0;
 }
+
+/* --- Logo Styling --- */
+.logo-container {
+  transition: transform var(--t-slow), filter var(--t-slow);
+}
+
+.logo-container:hover img {
+  filter: drop-shadow(0 0 16px rgba(0, 200, 255, 0.6)) brightness(1.2) !important;
+  transform: scale(1.02);
+}
+
+.logo-glow img {
+  animation: pulseGlow 4s ease-in-out infinite alternate;
+}

@@ -1,4 +1,5 @@
 import type { ProjectInfo, SerialDevice } from '../types';
+import { Logo } from './Logo';
 
 interface ToolbarProps {
   projectInfo: ProjectInfo | null;
@@ -37,7 +38,7 @@ export function Toolbar({
           </svg>
         </button>
 
-        <div style={s.logoMark}>⚡</div>
+        <Logo size="sm" iconOnly={true} glow={false} />
 
         <div style={s.projectInfo}>
           <span style={s.projectName}>{projectInfo?.name ?? '...'}</span>

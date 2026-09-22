@@ -5,9 +5,11 @@ import { Welcome } from './pages/Welcome';
 import { NewProject } from './pages/NewProject';
 import { Editor } from './pages/Editor';
 import { Bootstrap } from './pages/Bootstrap';
+import { SplashScreen } from './components/SplashScreen';
 import type { AppScreen } from './types';
 
 function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [screen, setScreen] = useState<AppScreen | 'loading'>('loading');
   const [projectPath, setProjectPath] = useState<string | null>(null);
 
@@ -34,27 +36,30 @@ function App() {
 
   return (
     <>
-      {screen === 'loading' && (
+      {showSplash && (
+        <SplashScreen onComplete={() => setShowSplash(false)} />
+      )}
+      {!showSplash && screen === 'loading' && (
         <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>
           <div className="spinner" />
         </div>
       )}
-      {screen === 'bootstrap' && (
+      {!showSplash && screen === 'bootstrap' && (
         <Bootstrap onDone={() => setScreen('welcome')} />
       )}
-      {screen === 'welcome' && (
+      {!showSplash && screen === 'welcome' && (
         <Welcome
           onNewProject={() => setScreen('new-project')}
           onOpenProject={openEditor}
         />
       )}
-      {screen === 'new-project' && (
+      {!showSplash && screen === 'new-project' && (
         <NewProject
           onBack={() => setScreen('welcome')}
           onDone={openEditor}
         />
       )}
-      {screen === 'editor' && projectPath && (
+      {!showSplash && screen === 'editor' && projectPath && (
         <Editor
           projectPath={projectPath}
           onBack={() => setScreen('welcome')}
