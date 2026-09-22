@@ -93,7 +93,7 @@ export function Welcome({ onNewProject, onOpenProject }: WelcomeProps) {
 
       {/* Header strip */}
       <div style={styles.header}>
-        <span style={styles.headerTag}>v0.1.0</span>
+        <span style={styles.headerTag}>v0.2.0</span>
       </div>
 
       {/* Hero */}
