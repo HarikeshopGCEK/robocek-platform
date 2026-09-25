@@ -8,9 +8,10 @@ interface SplashScreenProps {
 
 export const SplashScreen: React.FC<SplashScreenProps> = ({
   onComplete,
-  videoSrc = '/splash.mp4',
+  videoSrc = '/splash_screen.mp4',
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [currentVideoSrc, setCurrentVideoSrc] = useState(videoSrc);
   const [useFallback, setUseFallback] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isFadingOut, setIsFadingOut] = useState(false);
@@ -60,10 +61,16 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
     return () => clearInterval(interval);
   }, [useFallback]);
 
-  // Video load error handler
+  // Video load error handler with alt path try
   const handleVideoError = () => {
-    console.log('Video splash not found or unsupported, falling back to animated logo.');
-    setUseFallback(true);
+    if (currentVideoSrc === '/splash_screen.mp4') {
+      setCurrentVideoSrc('/Flash_screen.mp4');
+    } else if (currentVideoSrc === '/Flash_screen.mp4') {
+      setCurrentVideoSrc('/splash.mp4');
+    } else {
+      console.log('Video splash not found or unsupported, falling back to animated logo.');
+      setUseFallback(true);
+    }
   };
 
   const toggleMute = () => {
@@ -109,7 +116,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
         <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <video
             ref={videoRef}
-            src={videoSrc}
+            src={currentVideoSrc}
             autoPlay
             muted={isMuted}
             playsInline

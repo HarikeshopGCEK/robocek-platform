@@ -27,6 +27,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "publisher": "ROBOCEK GCEK",
+    "copyright": "Copyright © ROBOCEK GCEK. All rights reserved.",
+    "shortDescription": "ROBOCEK IDE by ROBOCEK GCEK",
+    "longDescription": "ROBOCEK IDE - Advanced Robotics & Firmware Development Environment. Published and copyrighted by ROBOCEK GCEK.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -36,6 +40,17 @@
     ],
     "resources": {
       "../../robocek-cli": "platform/robocek-cli"
+    },
+    "windows": {
+      "wix": {
+        "manufacturer": "ROBOCEK GCEK"
+      },
+      "nsis": {
+        "publisher": "ROBOCEK GCEK"
+      }
+    },
+    "macOS": {
+      "copyright": "Copyright © ROBOCEK GCEK. All rights reserved."
     }
   }
 }

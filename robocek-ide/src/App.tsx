@@ -37,7 +37,7 @@ function App() {
   return (
     <>
       {showSplash && (
-        <SplashScreen onComplete={() => setShowSplash(false)} />
+        <SplashScreen videoSrc="/splash_screen.mp4" onComplete={() => setShowSplash(false)} />
       )}
       {!showSplash && screen === 'loading' && (
         <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)' }}>

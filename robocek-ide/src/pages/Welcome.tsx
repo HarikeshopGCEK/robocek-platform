@@ -175,6 +175,11 @@ export function Welcome({ onNewProject, onOpenProject }: WelcomeProps) {
           </div>
         </div>
       )}
+
+      {/* Footer copyright */}
+      <div style={styles.footer}>
+        Published by ROBOCEK GCEK · © ROBOCEK GCEK. All rights reserved.
+      </div>
     </div>
   );
 }
@@ -387,5 +392,12 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     color: 'var(--text-muted)',
     flexShrink: 0,
+  },
+  footer: {
+    marginTop: 32,
+    fontSize: 11,
+    color: 'var(--text-muted)',
+    textAlign: 'center',
+    opacity: 0.7,
   },
 };

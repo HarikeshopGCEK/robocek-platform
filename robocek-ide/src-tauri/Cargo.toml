@@ -2,7 +2,7 @@
 name = "robocek-studio"
 version = "0.2.0"
 description = "ROBOCEK Embedded Robotics IDE"
-authors = ["you"]
+authors = ["ROBOCEK GCEK"]
 edition = "2021"
 
 [lib]
