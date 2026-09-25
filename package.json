@@ -1,0 +1,14 @@
+{
+  "name": "robocek-platform",
+  "private": true,
+  "version": "0.2.1",
+  "description": "ROBOCEK Embedded Robotics Platform published by ROBOCEK GCEK",
+  "author": "ROBOCEK GCEK",
+  "scripts": {
+    "dev": "npm --prefix robocek-ide run dev",
+    "build": "npm --prefix robocek-ide run build",
+    "tauri": "npm --prefix robocek-ide run tauri",
+    "tauri:dev": "npm --prefix robocek-ide run tauri dev",
+    "tauri:build": "npm --prefix robocek-ide run tauri build"
+  }
+}
