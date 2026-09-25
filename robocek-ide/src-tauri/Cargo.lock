@@ -2878,8 +2878,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "robocek-ide"
-version = "0.1.0"
+name = "robocek-studio"
+version = "0.2.0"
 dependencies = [
  "serde",
  "serde_json",

@@ -40,17 +40,6 @@
     ],
     "resources": {
       "../../robocek-cli": "platform/robocek-cli"
-    },
-    "windows": {
-      "wix": {
-        "manufacturer": "ROBOCEK GCEK"
-      },
-      "nsis": {
-        "publisher": "ROBOCEK GCEK"
-      }
-    },
-    "macOS": {
-      "copyright": "Copyright © ROBOCEK GCEK. All rights reserved."
     }
   }
 }
