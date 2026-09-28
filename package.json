@@ -1,7 +1,7 @@
 {
   "name": "robocek-platform",
   "private": true,
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "ROBOCEK Embedded Robotics Platform published by ROBOCEK GCEK",
   "author": "ROBOCEK GCEK",
   "scripts": {
