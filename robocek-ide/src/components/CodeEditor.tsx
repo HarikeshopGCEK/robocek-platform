@@ -1,5 +1,6 @@
 import MonacoEditor from '@monaco-editor/react';
 import { Logo } from './Logo';
+import { useTheme } from '../theme';
 import type { OpenFile } from '../types';
 
 interface CodeEditorProps {
@@ -36,6 +37,56 @@ function CloseIcon() {
   );
 }
 
+const DARK_THEME = {
+  base: 'vs-dark',
+  inherit: true,
+  rules: [
+    { token: 'comment', foreground: '4A5568', fontStyle: 'italic' },
+    { token: 'keyword', foreground: '00C8FF' },
+    { token: 'string', foreground: 'A8C7FA' },
+    { token: 'number', foreground: 'FFB300' },
+    { token: 'type', foreground: '7C3AED' },
+  ],
+  colors: {
+    'editor.background': '#0E1118',
+    'editor.foreground': '#E2E8F4',
+    'editorLineNumber.foreground': '#2D3748',
+    'editorLineNumber.activeForeground': '#4A5568',
+    'editor.lineHighlightBackground': '#141720',
+    'editorCursor.foreground': '#00C8FF',
+    'editor.selectionBackground': '#00C8FF22',
+    'editorGutter.background': '#0E1118',
+    'editorWidget.background': '#141720',
+    'editorSuggestWidget.background': '#141720',
+    'editorSuggestWidget.border': '#2A2D3A',
+  },
+};
+
+const LIGHT_THEME = {
+  base: 'vs',
+  inherit: true,
+  rules: [
+    { token: 'comment', foreground: '6B7280', fontStyle: 'italic' },
+    { token: 'keyword', foreground: '0090C0' },
+    { token: 'string', foreground: '0369A1' },
+    { token: 'number', foreground: 'D97706' },
+    { token: 'type', foreground: '6D28D9' },
+  ],
+  colors: {
+    'editor.background': '#FFFFFF',
+    'editor.foreground': '#1E293B',
+    'editorLineNumber.foreground': '#CBD5E1',
+    'editorLineNumber.activeForeground': '#64748B',
+    'editor.lineHighlightBackground': '#F1F5F9',
+    'editorCursor.foreground': '#0090C0',
+    'editor.selectionBackground': '#0090C022',
+    'editorGutter.background': '#FFFFFF',
+    'editorWidget.background': '#F1F5F9',
+    'editorSuggestWidget.background': '#F1F5F9',
+    'editorSuggestWidget.border': '#CBD5E1',
+  },
+};
+
 export function CodeEditor({
   openFiles,
   activeFilePath,
@@ -44,6 +95,7 @@ export function CodeEditor({
   onFileSave,
   onFileClose,
 }: CodeEditorProps) {
+  const { theme } = useTheme();
   const activeFile = openFiles.find(f => f.path === activeFilePath);
 
   return (
@@ -86,32 +138,10 @@ export function CodeEditor({
             theme="vs-dark"
             onChange={val => onFileChange(activeFile.path, val ?? '')}
             onMount={(editor, monaco) => {
-              // Override the default vs-dark with our custom background
-              monaco.editor.defineTheme('robocek-dark', {
-                base: 'vs-dark',
-                inherit: true,
-                rules: [
-                  { token: 'comment', foreground: '4A5568', fontStyle: 'italic' },
-                  { token: 'keyword', foreground: '00C8FF' },
-                  { token: 'string', foreground: 'A8C7FA' },
-                  { token: 'number', foreground: 'FFB300' },
-                  { token: 'type', foreground: '7C3AED' },
-                ],
-                colors: {
-                  'editor.background': '#0E1118',
-                  'editor.foreground': '#E2E8F4',
-                  'editorLineNumber.foreground': '#2D3748',
-                  'editorLineNumber.activeForeground': '#4A5568',
-                  'editor.lineHighlightBackground': '#141720',
-                  'editorCursor.foreground': '#00C8FF',
-                  'editor.selectionBackground': '#00C8FF22',
-                  'editorGutter.background': '#0E1118',
-                  'editorWidget.background': '#141720',
-                  'editorSuggestWidget.background': '#141720',
-                  'editorSuggestWidget.border': '#2A2D3A',
-                },
-              });
-              monaco.editor.setTheme('robocek-dark');
+              const themeName = theme === 'dark' ? 'robocek-dark' : 'robocek-light';
+              const themeData = theme === 'dark' ? DARK_THEME : LIGHT_THEME;
+              monaco.editor.defineTheme(themeName, themeData);
+              monaco.editor.setTheme(themeName);
 
               // Save on Ctrl+S
               editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {

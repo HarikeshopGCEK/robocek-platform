@@ -1,5 +1,6 @@
 import type { ProjectInfo, SerialDevice } from '../types';
 import { Logo } from './Logo';
+import { useTheme } from '../theme';
 
 interface ToolbarProps {
   projectInfo: ProjectInfo | null;
@@ -26,6 +27,7 @@ export function Toolbar({
   onStopMonitor,
   onBack,
 }: ToolbarProps) {
+  const { theme, toggleTheme } = useTheme();
   const busy = isBuilding || isUploading || isMonitoring;
 
   return (
@@ -111,8 +113,32 @@ export function Toolbar({
         )}
       </div>
 
-      {/* Right: device indicator */}
+      {/* Right: device indicator + theme toggle */}
       <div style={s.right}>
+        <button
+          style={s.themeToggle}
+          onClick={toggleTheme}
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+        >
+          {theme === 'dark' ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="5"/>
+              <line x1="12" y1="1" x2="12" y2="3"/>
+              <line x1="12" y1="21" x2="12" y2="23"/>
+              <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+              <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+              <line x1="1" y1="12" x2="3" y2="12"/>
+              <line x1="21" y1="12" x2="23" y2="12"/>
+              <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+              <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+          )}
+        </button>
+
         {devices.length > 0 ? (
           <div style={s.devicePill} title={devices.map(d => `${d.port}: ${d.description}`).join('\n')}>
             <span style={s.deviceDot} />
@@ -159,11 +185,6 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     borderRadius: 'var(--r-sm)',
     transition: 'color var(--t), background var(--t)',
-    flexShrink: 0,
-  },
-  logoMark: {
-    fontSize: 16,
-    filter: 'drop-shadow(0 0 6px rgba(0,200,255,0.5))',
     flexShrink: 0,
   },
   projectInfo: {
@@ -237,6 +258,21 @@ const s: Record<string, React.CSSProperties> = {
     flex: 1,
     justifyContent: 'flex-end',
     minWidth: 0,
+    gap: 8,
+  },
+  themeToggle: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 28,
+    height: 28,
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--r-sm)',
+    background: 'var(--bg-raised)',
+    color: 'var(--text-secondary)',
+    cursor: 'pointer',
+    transition: 'all var(--t)',
+    flexShrink: 0,
   },
   devicePill: {
     display: 'flex',

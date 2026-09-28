@@ -99,7 +99,7 @@ function FileEntry({
   activeFilePath: string | null;
   onFileClick: (node: FileNode) => void;
 }) {
-  const [expanded, setExpanded] = useState(depth === 0 ? true : node.name === 'src');
+  const [expanded, setExpanded] = useState(depth === 0);
 
   if (node.is_dir) {
     return (
