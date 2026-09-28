@@ -159,7 +159,19 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                 transition: 'all 0.2s ease',
               }}
             >
-              {isMuted ? '🔇 Muted' : '🔊 Audio On'}
+              {isMuted ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <line x1="23" y1="9" x2="17" y2="15" />
+                  <line x1="17" y1="9" x2="23" y2="15" />
+                </svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+                  <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                </svg>
+              )}
+              {isMuted ? 'Muted' : 'Audio On'}
             </button>
 
             <button
@@ -176,9 +188,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
                 cursor: 'pointer',
                 letterSpacing: '0.05em',
                 transition: 'all 0.2s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
               }}
             >
-              Skip Intro →
+              Skip Intro
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
             </button>
           </div>
         </div>
@@ -257,9 +275,15 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({
               fontSize: '12px',
               cursor: 'pointer',
               transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
-            Skip →
+            Skip
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       )}

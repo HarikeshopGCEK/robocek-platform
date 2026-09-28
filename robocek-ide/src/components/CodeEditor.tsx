@@ -27,6 +27,15 @@ function getLanguage(filename: string): string {
   }
 }
 
+function CloseIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
 export function CodeEditor({
   openFiles,
   activeFilePath,
@@ -61,7 +70,7 @@ export function CodeEditor({
               onClick={e => { e.stopPropagation(); onFileClose(f.path); }}
               title="Close"
             >
-              ×
+              <CloseIcon />
             </button>
           </div>
         ))}
@@ -214,10 +223,10 @@ const s: Record<string, React.CSSProperties> = {
     color: 'var(--text-muted)',
     cursor: 'pointer',
     borderRadius: 2,
-    fontSize: 14,
-    lineHeight: 1,
     flexShrink: 0,
     fontFamily: 'var(--font-ui)',
+    opacity: 0,
+    transition: 'opacity var(--t)',
   },
   noTabsHint: {
     display: 'flex',
@@ -241,17 +250,6 @@ const s: Record<string, React.CSSProperties> = {
     gap: 10,
     color: 'var(--text-muted)',
     userSelect: 'none',
-  },
-  emptyIcon: {
-    fontSize: 40,
-    filter: 'grayscale(1) opacity(0.3)',
-    marginBottom: 8,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: 600,
-    color: 'var(--text-muted)',
-    letterSpacing: '0.05em',
   },
   emptyHint: {
     fontSize: 12,

@@ -15,9 +15,9 @@ interface EditorProps {
 function classifyLine(line: string, isError: boolean): OutputLine['type'] {
   if (isError) return 'error';
   const l = line.toLowerCase();
-  if (l.includes('error') || l.includes('failed') || l.includes('✗')) return 'error';
+  if (l.includes('error') || l.includes('failed') || l.includes('[error]')) return 'error';
   if (l.includes('warning') || l.includes('warn')) return 'warning';
-  if (l.includes('success') || l.includes('done') || l.includes('✓') || l.includes('built in')) return 'success';
+  if (l.includes('success') || l.includes('done') || l.includes('built in') || l.includes('completed')) return 'success';
   return 'plain';
 }
 
@@ -154,20 +154,19 @@ export function Editor({ projectPath, onBack }: EditorProps) {
     setIsBuilding(true);
     setActivePanel('output');
     appendOutput('', 'plain');
-    appendOutput('──────────────────────────────────────────────', 'plain');
-    appendOutput('  🔨 Build started', 'info');
-    appendOutput('──────────────────────────────────────────────', 'plain');
+    appendOutput('  BUILD STARTED', 'info');
+    appendOutput('  ──────────────────────────────────────────────', 'plain');
 
     const code = await runCommand('robocek', ['build'], (text, isErr) => {
       appendOutput(text, classifyLine(text, isErr));
     });
 
-    appendOutput('──────────────────────────────────────────────', 'plain');
+    appendOutput('  ──────────────────────────────────────────────', 'plain');
     appendOutput(
-      code === 0 ? '  ✅ Build successful' : `  ❌ Build failed (exit ${code})`,
+      code === 0 ? '  BUILD SUCCESSFUL' : `  BUILD FAILED (exit ${code})`,
       code === 0 ? 'success' : 'error',
     );
-    appendOutput('──────────────────────────────────────────────', 'plain');
+    appendOutput('  ──────────────────────────────────────────────', 'plain');
     setIsBuilding(false);
     cmdRunning.current = false;
     refreshFileTree();
@@ -179,20 +178,19 @@ export function Editor({ projectPath, onBack }: EditorProps) {
     setIsUploading(true);
     setActivePanel('output');
     appendOutput('', 'plain');
-    appendOutput('──────────────────────────────────────────────', 'plain');
-    appendOutput('  ⬆ Upload started', 'info');
-    appendOutput('──────────────────────────────────────────────', 'plain');
+    appendOutput('  UPLOAD STARTED', 'info');
+    appendOutput('  ──────────────────────────────────────────────', 'plain');
 
     const code = await runCommand('robocek', ['upload'], (text, isErr) => {
       appendOutput(text, classifyLine(text, isErr));
     });
 
-    appendOutput('──────────────────────────────────────────────', 'plain');
+    appendOutput('  ──────────────────────────────────────────────', 'plain');
     appendOutput(
-      code === 0 ? '  ✅ Upload successful' : `  ❌ Upload failed (exit ${code})`,
+      code === 0 ? '  UPLOAD SUCCESSFUL' : `  UPLOAD FAILED (exit ${code})`,
       code === 0 ? 'success' : 'error',
     );
-    appendOutput('──────────────────────────────────────────────', 'plain');
+    appendOutput('  ──────────────────────────────────────────────', 'plain');
     setIsUploading(false);
     cmdRunning.current = false;
   };
@@ -210,13 +208,13 @@ export function Editor({ projectPath, onBack }: EditorProps) {
     const eventId = `robocek-serial-${Date.now()}`;
     setIsMonitoring(true);
     setActivePanel('monitor');
-    appendMonitor(`📡 Connecting to ${device.port} at 115200 baud...`, 'info');
+    appendMonitor(`Connecting to ${device.port} at 115200 baud...`, 'info');
 
     const unlisten = await listen<CommandOutput>(eventId, (e) => {
       const out = e.payload;
       if (out.is_done) {
         unlisten();
-        appendMonitor('🔌 Serial monitor stopped.', 'info');
+        appendMonitor('Serial monitor stopped.', 'info');
         setIsMonitoring(false);
       } else {
         appendMonitor(out.line, 'plain');
@@ -229,10 +227,10 @@ export function Editor({ projectPath, onBack }: EditorProps) {
         baudRate: 115200,
         eventId,
       });
-      appendMonitor(`✅ Connected to ${device.port}`, 'success');
+      appendMonitor(`Connected to ${device.port}`, 'success');
     } catch (err) {
       unlisten();
-      appendMonitor(`❌ Failed to open port: ${err}`, 'error');
+      appendMonitor(`Failed to open port: ${err}`, 'error');
       setIsMonitoring(false);
     }
   };

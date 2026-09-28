@@ -7,22 +7,85 @@ interface SidebarProps {
   onFileClick: (node: FileNode) => void;
 }
 
-const FILE_ICONS: Record<string, string> = {
-  '.cpp': '🔵',
-  '.c':   '🔵',
-  '.h':   '🔷',
-  '.hpp': '🔷',
-  '.yaml':'⚙️',
-  '.yml': '⚙️',
-  '.ini': '📋',
-  '.md':  '📝',
-  '.json':'📦',
-  '.txt': '📄',
+const FILE_COLORS: Record<string, string> = {
+  '.cpp': '#00C8FF',
+  '.c': '#00C8FF',
+  '.h': '#7C3AED',
+  '.hpp': '#7C3AED',
+  '.yaml': '#FFB300',
+  '.yml': '#FFB300',
+  '.ini': '#8A95A8',
+  '.md': '#8A95A8',
+  '.json': '#00E676',
+  '.txt': '#8A95A8',
 };
 
-function fileIcon(name: string): string {
+function fileColor(name: string): string {
   const ext = '.' + name.split('.').pop()?.toLowerCase();
-  return FILE_ICONS[ext] ?? '📄';
+  return FILE_COLORS[ext] ?? '#8A95A8';
+}
+
+function FileTypeIcon({ name }: { name: string }) {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  const color = fileColor(name);
+  const label = ext.length > 4 ? ext.slice(0, 4) : ext;
+
+  return (
+    <span
+      style={{
+        fontSize: 8,
+        fontWeight: 700,
+        fontFamily: 'var(--font-code)',
+        color: color,
+        background: `${color}15`,
+        border: `1px solid ${color}30`,
+        borderRadius: 3,
+        padding: '1px 4px',
+        flexShrink: 0,
+        marginLeft: 14,
+        lineHeight: 1.4,
+        letterSpacing: '0.02em',
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function FolderIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+      {expanded ? (
+        <>
+          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+          <polyline points="12 10 12 16" />
+          <polyline points="9 13 12 16 15 13" />
+        </>
+      ) : (
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+      )}
+    </svg>
+  );
+}
+
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      width="10"
+      height="10"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      style={{
+        flexShrink: 0,
+        transition: 'transform var(--t)',
+        transform: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+      }}
+    >
+      <polyline points="6 9 12 15 18 9" />
+    </svg>
+  );
 }
 
 function FileEntry({
@@ -45,8 +108,8 @@ function FileEntry({
           style={{ ...s.entry, paddingLeft: 8 + depth * 14 }}
           onClick={() => setExpanded(e => !e)}
         >
-          <span style={s.arrow}>{expanded ? '▾' : '▸'}</span>
-          <span style={s.dirIcon}>{expanded ? '📂' : '📁'}</span>
+          <ChevronIcon expanded={expanded} />
+          <span style={s.dirIcon}><FolderIcon expanded={expanded} /></span>
           <span style={s.entryName}>{node.name}</span>
           {node.children.length > 0 && (
             <span style={s.childCount}>{node.children.length}</span>
@@ -78,7 +141,7 @@ function FileEntry({
       onClick={() => onFileClick(node)}
       title={node.path}
     >
-      <span style={s.fileIconSpan}>{fileIcon(node.name)}</span>
+      <FileTypeIcon name={node.name} />
       <span style={{ ...s.entryName, ...(isActive ? { color: 'var(--accent)' } : {}) }}>
         {node.name}
       </span>
@@ -163,14 +226,11 @@ const s: Record<string, React.CSSProperties> = {
     background: 'var(--accent-dim)',
     borderLeft: '2px solid var(--accent)',
   },
-  arrow: {
-    fontSize: 9,
+  dirIcon: {
     color: 'var(--text-muted)',
-    width: 10,
-    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
   },
-  dirIcon: { fontSize: 13, flexShrink: 0 },
-  fileIconSpan: { fontSize: 11, flexShrink: 0, marginLeft: 14 },
   entryName: {
     overflow: 'hidden',
     textOverflow: 'ellipsis',

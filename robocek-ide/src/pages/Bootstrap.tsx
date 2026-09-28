@@ -10,6 +10,14 @@ interface BootstrapProps {
 
 type SetupStep = 'idle' | 'python' | 'venv' | 'pio' | 'cli' | 'done' | 'failed';
 
+function CheckIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 export function Bootstrap({ onDone }: BootstrapProps) {
   const [step, setStep] = useState<SetupStep>('idle');
   const [logs, setLogs] = useState<string[]>([]);
@@ -52,13 +60,13 @@ export function Bootstrap({ onDone }: BootstrapProps) {
         appendLog(line);
 
         // Update steps based on log messages
-        if (line.includes('📁 Creating isolated virtual environment')) {
+        if (line.includes('Creating isolated virtual environment')) {
           setStep('venv');
           setStatusMessage('Creating private virtual environment...');
-        } else if (line.includes('📦 Installing PlatformIO Core')) {
+        } else if (line.includes('Installing PlatformIO Core')) {
           setStep('pio');
           setStatusMessage('Installing PlatformIO compiler toolchain...');
-        } else if (line.includes('📦 Bundling and installing robocek-cli')) {
+        } else if (line.includes('Bundling and installing robocek-cli')) {
           setStep('cli');
           setStatusMessage('Installing ROBOCEK CLI & SDK...');
         }
@@ -69,7 +77,7 @@ export function Bootstrap({ onDone }: BootstrapProps) {
       await invoke('run_bootstrap');
     } catch (e) {
       unlisten();
-      appendLog(`❌ Unhandled Error: ${e}`);
+      appendLog(`[ERROR] Unhandled Error: ${e}`);
       setStep('failed');
       setStatusMessage('Setup failed.');
       setRunning(false);
@@ -93,7 +101,7 @@ export function Bootstrap({ onDone }: BootstrapProps) {
         <div style={s.card}>
           <div style={s.stepRow}>
             <div style={{ ...s.stepIcon, ...(step === 'python' ? s.stepActive : ['venv', 'pio', 'cli', 'done'].includes(step) ? s.stepCompleted : {}) }}>
-              {['venv', 'pio', 'cli', 'done'].includes(step) ? '✓' : '1'}
+              {['venv', 'pio', 'cli', 'done'].includes(step) ? <CheckIcon /> : '1'}
             </div>
             <div style={s.stepText}>
               <div style={s.stepTitle}>Python 3.10+ Environment</div>
@@ -103,7 +111,7 @@ export function Bootstrap({ onDone }: BootstrapProps) {
 
           <div style={s.stepRow}>
             <div style={{ ...s.stepIcon, ...(step === 'venv' ? s.stepActive : ['pio', 'cli', 'done'].includes(step) ? s.stepCompleted : {}) }}>
-              {['pio', 'cli', 'done'].includes(step) ? '✓' : '2'}
+              {['pio', 'cli', 'done'].includes(step) ? <CheckIcon /> : '2'}
             </div>
             <div style={s.stepText}>
               <div style={s.stepTitle}>Virtual Environment Setup</div>
@@ -113,7 +121,7 @@ export function Bootstrap({ onDone }: BootstrapProps) {
 
           <div style={s.stepRow}>
             <div style={{ ...s.stepIcon, ...(step === 'pio' ? s.stepActive : ['cli', 'done'].includes(step) ? s.stepCompleted : {}) }}>
-              {['cli', 'done'].includes(step) ? '✓' : '3'}
+              {['cli', 'done'].includes(step) ? <CheckIcon /> : '3'}
             </div>
             <div style={s.stepText}>
               <div style={s.stepTitle}>PlatformIO Core Compilation Toolchain</div>
@@ -123,7 +131,7 @@ export function Bootstrap({ onDone }: BootstrapProps) {
 
           <div style={s.stepRow}>
             <div style={{ ...s.stepIcon, ...(step === 'cli' ? s.stepActive : step === 'done' ? s.stepCompleted : {}) }}>
-              {step === 'done' ? '✓' : '4'}
+              {step === 'done' ? <CheckIcon /> : '4'}
             </div>
             <div style={s.stepText}>
               <div style={s.stepTitle}>ROBOCEK CLI & SDK</div>
@@ -140,8 +148,8 @@ export function Bootstrap({ onDone }: BootstrapProps) {
                 key={i}
                 style={{
                   ...s.logLine,
-                  color: line.startsWith('❌') ? 'var(--error)'
-                       : line.startsWith('✅') || line.startsWith('🎉') ? 'var(--success)'
+                  color: line.startsWith('[ERROR]') ? 'var(--error)'
+                       : line.startsWith('Bootstrap completed') ? 'var(--success)'
                        : line.startsWith('  ') ? 'var(--text-secondary)'
                        : 'var(--text-primary)',
                 }}

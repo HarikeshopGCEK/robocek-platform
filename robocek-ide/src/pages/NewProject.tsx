@@ -11,14 +11,76 @@ type Step = 1 | 2 | 3;
 
 const RECENT_KEY = 'robocek-recent-projects';
 
-const TEMPLATE_ICONS: Record<string, string> = {
-  empty:             '📄',
-  'line-follower':   '🏁',
-  'obstacle-avoider':'🚧',
-  'motor-test':      '⚙️',
-  'line-sensor-test':'🔍',
-  'ultrasonic-test': '📡',
-};
+function TemplateIcon({ id }: { id: string }) {
+  const iconStyle: React.CSSProperties = {
+    width: 36,
+    height: 36,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 'var(--r)',
+    flexShrink: 0,
+  };
+
+  switch (id) {
+    case 'line-follower':
+      return (
+        <div style={{ ...iconStyle, background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M4 20c0-8 4-16 8-16s8 8 8 16" />
+            <circle cx="12" cy="18" r="2" />
+            <path d="M8 20h8" />
+          </svg>
+        </div>
+      );
+    case 'obstacle-avoider':
+      return (
+        <div style={{ ...iconStyle, background: 'var(--warning-dim)', color: 'var(--warning)' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M12 2L2 7l10 5 10-5-10-5z" />
+            <path d="M2 17l10 5 10-5" />
+            <path d="M2 12l10 5 10-5" />
+          </svg>
+        </div>
+      );
+    case 'motor-test':
+      return (
+        <div style={{ ...iconStyle, background: 'var(--purple-dim)', color: 'var(--purple-soft)' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" />
+          </svg>
+        </div>
+      );
+    case 'line-sensor-test':
+      return (
+        <div style={{ ...iconStyle, background: 'var(--success-dim)', color: 'var(--success)' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+        </div>
+      );
+    case 'ultrasonic-test':
+      return (
+        <div style={{ ...iconStyle, background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M12 2a7 7 0 0 1 7 7c0 3-2 5-4 6l-1 2h-4l-1-2c-2-1-4-3-4-6a7 7 0 0 1 7-7z" />
+            <circle cx="12" cy="9" r="2" />
+          </svg>
+        </div>
+      );
+    default:
+      return (
+        <div style={{ ...iconStyle, background: 'var(--bg-raised)', color: 'var(--text-secondary)' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+          </svg>
+        </div>
+      );
+  }
+}
 
 export function NewProject({ onBack, onDone }: NewProjectProps) {
   const [step, setStep] = useState<Step>(1);
@@ -70,14 +132,14 @@ export function NewProject({ onBack, onDone }: NewProjectProps) {
 
     const appendLog = (line: string) => setLogs(prev => [...prev, line]);
 
-    appendLog('⚡ Starting project creation...');
+    appendLog('Starting project creation...');
     appendLog(`   Template : ${selectedTemplate.name}`);
     appendLog(`   Board    : ${selectedBoard}`);
     appendLog(`   Location : ${destination}\\${projectName}`);
     appendLog('');
 
     try {
-      appendLog('📁 Creating directory structure...');
+      appendLog('Creating directory structure...');
       const path = await invoke<string>('create_project', {
         templateId: selectedTemplate.id,
         projectName: projectName,
@@ -85,13 +147,13 @@ export function NewProject({ onBack, onDone }: NewProjectProps) {
         destination,
       });
 
-      appendLog('📋 Copying template source...');
-      appendLog('📦 Copying ROBOCEK SDK...');
-      appendLog('⚙️  Generating hardware configuration...');
-      appendLog('📄 Writing platformio.ini...');
-      appendLog('📄 Writing robocek.yaml...');
+      appendLog('Copying template source...');
+      appendLog('Copying ROBOCEK SDK...');
+      appendLog('Generating hardware configuration...');
+      appendLog('Writing platformio.ini...');
+      appendLog('Writing robocek.yaml...');
       appendLog('');
-      appendLog('✅ Project created successfully!');
+      appendLog('Project created successfully!');
       appendLog(`   Path: ${path}`);
 
       // Save to recent
@@ -106,7 +168,7 @@ export function NewProject({ onBack, onDone }: NewProjectProps) {
       setDone(true);
     } catch (e) {
       appendLog('');
-      appendLog(`❌ Error: ${e}`);
+      appendLog(`Error: ${e}`);
       setError(e as string);
     } finally {
       setCreating(false);
@@ -144,7 +206,7 @@ export function NewProject({ onBack, onDone }: NewProjectProps) {
       </div>
 
       <div style={s.content}>
-        {/* ─── STEP 1: Choose template ─── */}
+        {/* --- STEP 1: Choose template --- */}
         {step === 1 && (
           <div style={s.stepContent}>
             <h2 style={s.stepHeading}>Choose a Template</h2>
@@ -160,7 +222,7 @@ export function NewProject({ onBack, onDone }: NewProjectProps) {
                   onClick={() => setSelectedTemplate(t)}
                 >
                   <div style={s.templateTop}>
-                    <span style={s.templateIcon}>{TEMPLATE_ICONS[t.id] ?? '📄'}</span>
+                    <TemplateIcon id={t.id} />
                     <span className={`badge badge-${t.category}`}>{t.category}</span>
                   </div>
                   <div style={s.templateName}>{t.name}</div>
@@ -191,7 +253,7 @@ export function NewProject({ onBack, onDone }: NewProjectProps) {
           </div>
         )}
 
-        {/* ─── STEP 2: Configure ─── */}
+        {/* --- STEP 2: Configure --- */}
         {step === 2 && (
           <div style={{ ...s.stepContent, maxWidth: 520 }}>
             <h2 style={s.stepHeading}>Configure Project</h2>
@@ -226,7 +288,10 @@ export function NewProject({ onBack, onDone }: NewProjectProps) {
               </div>
               {destination && projectName && (
                 <div style={s.pathPreview}>
-                  📁 {destination}\{projectName}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: 2 }}>
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                  </svg>
+                  <span>{destination}\{projectName}</span>
                 </div>
               )}
             </div>
@@ -278,11 +343,11 @@ export function NewProject({ onBack, onDone }: NewProjectProps) {
           </div>
         )}
 
-        {/* ─── STEP 3: Creating / Done ─── */}
+        {/* --- STEP 3: Creating / Done --- */}
         {step === 3 && (
           <div style={{ ...s.stepContent, maxWidth: 560 }}>
             <h2 style={s.stepHeading}>
-              {creating ? 'Creating Project...' : done ? '🎉 Project Ready!' : '❌ Creation Failed'}
+              {creating ? 'Creating Project...' : done ? 'Project Ready' : 'Creation Failed'}
             </h2>
 
             {/* Log output */}
@@ -292,8 +357,8 @@ export function NewProject({ onBack, onDone }: NewProjectProps) {
                   key={i}
                   style={{
                     ...s.logLine,
-                    color: line.startsWith('❌') ? 'var(--error)'
-                         : line.startsWith('✅') ? 'var(--success)'
+                    color: line.startsWith('Error:') ? 'var(--error)'
+                         : line.startsWith('Project created') ? 'var(--success)'
                          : line.startsWith('  ') ? 'var(--text-secondary)'
                          : 'var(--text-primary)',
                     animation: `fadeIn 0.2s ease ${i * 0.04}s both`,
@@ -412,7 +477,6 @@ const s: Record<string, React.CSSProperties> = {
     boxShadow: '0 0 0 1px var(--accent), 0 0 20px var(--accent-glow)',
   },
   templateTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' },
-  templateIcon: { fontSize: 24 },
   templateName: { fontSize: 14, fontWeight: 600 },
   templateDesc: { fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.4 },
   selectedCheck: {
@@ -447,6 +511,9 @@ const s: Record<string, React.CSSProperties> = {
     background: 'var(--bg-raised)',
     padding: '4px 10px',
     borderRadius: 'var(--r-sm)',
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 6,
   },
   summaryCard: {
     background: 'var(--bg-surface)',
