@@ -6,7 +6,7 @@ import { NewProject } from './pages/NewProject';
 import { Editor } from './pages/Editor';
 import { Bootstrap } from './pages/Bootstrap';
 import { SplashScreen } from './components/SplashScreen';
-import type { AppScreen } from './types';
+import type { AppScreen, BootstrapStatus } from './types';
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -16,13 +16,15 @@ function App() {
   useEffect(() => {
     const checkStatus = async () => {
       try {
-        const status = await invoke<{ is_ready: boolean }>('check_bootstrap_status');
+        const status = await invoke<BootstrapStatus>('check_bootstrap_status');
         if (status.is_ready) {
           setScreen('welcome');
         } else {
           setScreen('bootstrap');
         }
-      } catch {
+      } catch (e) {
+        // If the check itself fails, assume setup is needed
+        console.error('[App] Bootstrap status check failed:', e);
         setScreen('bootstrap');
       }
     };

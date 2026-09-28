@@ -537,36 +537,11 @@ fn get_project_info(project_dir: String) -> Result<ProjectInfo, String> {
 #[tauri::command]
 fn list_project_files(project_dir: String) -> Result<Vec<FileNode>, String> {
     let dir = PathBuf::from(&project_dir);
-    let mut nodes = Vec::new();
 
-    // Show these directories in the sidebar
-    for dir_name in &["src", "include", "lib", "generated"] {
-        let sub = dir.join(dir_name);
-        if sub.exists() {
-            let children = list_dir_recursive(&sub, 3)?;
-            nodes.push(FileNode {
-                name: dir_name.to_string(),
-                path: sub.to_string_lossy().to_string(),
-                is_dir: true,
-                children,
-            });
-        }
-    }
+    // List everything in the project root (all directories and files)
+    let children = list_dir_recursive(&dir, 10)?;
 
-    // Root-level config files
-    for file_name in &["robocek.yaml", "platformio.ini"] {
-        let f = dir.join(file_name);
-        if f.exists() {
-            nodes.push(FileNode {
-                name: file_name.to_string(),
-                path: f.to_string_lossy().to_string(),
-                is_dir: false,
-                children: Vec::new(),
-            });
-        }
-    }
-
-    Ok(nodes)
+    Ok(children)
 }
 
 #[tauri::command]
@@ -681,24 +656,29 @@ fn get_robocek_env_paths() -> Option<(PathBuf, PathBuf, PathBuf)> {
     Some((robocek_dir, penv_dir, bin_dir))
 }
 
-fn check_python_installed() -> bool {
-    if let Ok(output) = Command::new("python").arg("--version").output() {
-        if output.status.success() {
-            let version_str = String::from_utf8_lossy(&output.stdout);
-            if parse_and_check_python_version(&version_str) {
-                return true;
-            }
-        }
-    }
+/// Discover a working Python 3.10+ executable.
+/// Returns the command name/path that works, or None if no suitable Python found.
+/// Checks python3 first (Linux/macOS), then python (Windows).
+fn discover_python() -> Option<String> {
+    // Try python3 first (preferred on Linux/macOS)
     if let Ok(output) = Command::new("python3").arg("--version").output() {
         if output.status.success() {
             let version_str = String::from_utf8_lossy(&output.stdout);
             if parse_and_check_python_version(&version_str) {
-                return true;
+                return Some("python3".to_string());
             }
         }
     }
-    false
+    // Try python (preferred on Windows)
+    if let Ok(output) = Command::new("python").arg("--version").output() {
+        if output.status.success() {
+            let version_str = String::from_utf8_lossy(&output.stdout);
+            if parse_and_check_python_version(&version_str) {
+                return Some("python".to_string());
+            }
+        }
+    }
+    None
 }
 
 fn parse_and_check_python_version(version_str: &str) -> bool {
@@ -715,12 +695,74 @@ fn parse_and_check_python_version(version_str: &str) -> bool {
     false
 }
 
+/// Check if the venv exists and its Python actually works
+fn check_venv_works(penv_dir: &Path, bin_dir: &Path) -> bool {
+    if !penv_dir.exists() {
+        return false;
+    }
+    #[cfg(target_os = "windows")]
+    let venv_python = bin_dir.join("python.exe");
+    #[cfg(not(target_os = "windows"))]
+    let venv_python = bin_dir.join("python");
+
+    if !venv_python.exists() {
+        return false;
+    }
+    // Actually try to run the venv Python
+    Command::new(&venv_python)
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Check if PlatformIO works by running `pio --version`
+fn check_platformio_works(bin_dir: &Path) -> bool {
+    #[cfg(target_os = "windows")]
+    let pio_exe = bin_dir.join("pio.exe");
+    #[cfg(not(target_os = "windows"))]
+    let pio_exe = bin_dir.join("pio");
+
+    if !pio_exe.exists() {
+        return false;
+    }
+    Command::new(&pio_exe)
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Check if robocek CLI works by running `robocek version`
+fn check_cli_works(bin_dir: &Path) -> bool {
+    #[cfg(target_os = "windows")]
+    let robocek_exe = bin_dir.join("robocek.exe");
+    #[cfg(not(target_os = "windows"))]
+    let robocek_exe = bin_dir.join("robocek");
+
+    if !robocek_exe.exists() {
+        return false;
+    }
+    Command::new(&robocek_exe)
+        .arg("version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+}
+
+/// Check if SDK/resources are available
+fn check_sdk_available() -> bool {
+    find_platform_root().is_some()
+}
+
 #[derive(serde::Serialize, Clone, Debug)]
 pub struct BootstrapStatus {
     pub is_ready: bool,
     pub python_ok: bool,
+    pub venv_ok: bool,
     pub pio_ok: bool,
     pub cli_ok: bool,
+    pub sdk_ok: bool,
     pub message: String,
 }
 
@@ -730,36 +772,50 @@ fn check_bootstrap_status() -> Result<BootstrapStatus, String> {
         Some(p) => p,
         None => return Err("Could not determine user home directory".to_string()),
     };
-    let (_robocek_dir, _penv_dir, bin_dir) = paths;
+    let (_robocek_dir, penv_dir, bin_dir) = paths;
 
-    #[cfg(target_os = "windows")]
-    let pio_exe = bin_dir.join("pio.exe");
-    #[cfg(not(target_os = "windows"))]
-    let pio_exe = bin_dir.join("pio");
+    eprintln!("[Bootstrap] Checking environment...");
 
-    #[cfg(target_os = "windows")]
-    let robocek_exe = bin_dir.join("robocek.exe");
-    #[cfg(not(target_os = "windows"))]
-    let robocek_exe = bin_dir.join("robocek");
+    let python_ok = discover_python().is_some();
+    eprintln!("[Bootstrap] Python: {}", if python_ok { "OK" } else { "FAILED" });
 
-    let pio_ok = pio_exe.exists();
-    let cli_ok = robocek_exe.exists();
-    let python_ok = check_python_installed();
+    let venv_ok = check_venv_works(&penv_dir, &bin_dir);
+    eprintln!("[Bootstrap] Virtual environment: {}", if venv_ok { "OK" } else { "FAILED" });
 
-    let is_ready = pio_ok && cli_ok;
+    let pio_ok = check_platformio_works(&bin_dir);
+    eprintln!("[Bootstrap] PlatformIO: {}", if pio_ok { "OK" } else { "FAILED" });
+
+    let cli_ok = check_cli_works(&bin_dir);
+    eprintln!("[Bootstrap] ROBOCEK CLI: {}", if cli_ok { "OK" } else { "FAILED" });
+
+    let sdk_ok = check_sdk_available();
+    eprintln!("[Bootstrap] SDK/resources: {}", if sdk_ok { "OK" } else { "FAILED" });
+
+    let is_ready = python_ok && venv_ok && pio_ok && cli_ok && sdk_ok;
+
+    if is_ready {
+        eprintln!("[Bootstrap] Environment READY");
+    }
+
     let message = if is_ready {
         "ROBOCEK environment is ready.".to_string()
-    } else if !python_ok {
-        "Python 3.10+ is required but was not found.".to_string()
     } else {
-        "ROBOCEK environment needs setup.".to_string()
+        let mut missing = Vec::new();
+        if !python_ok { missing.push("Python 3.10+"); }
+        if !venv_ok { missing.push("Virtual environment"); }
+        if !pio_ok { missing.push("PlatformIO"); }
+        if !cli_ok { missing.push("ROBOCEK CLI"); }
+        if !sdk_ok { missing.push("SDK/resources"); }
+        format!("Missing or broken: {}", missing.join(", "))
     };
 
     Ok(BootstrapStatus {
         is_ready,
         python_ok,
+        venv_ok,
         pio_ok,
         cli_ok,
+        sdk_ok,
         message,
     })
 }
@@ -776,188 +832,264 @@ fn run_bootstrap(window: tauri::Window) {
             });
         };
 
-        emit_log("Starting environment bootstrap...", false);
+        emit_log("[Bootstrap] Starting environment check...", false);
 
-        // 1. Check Python
-        let mut python_path;
-        if !check_python_installed() {
-            emit_log("Python 3.10+ not detected on your system.", false);
-            #[cfg(target_os = "windows")]
-            {
-                emit_log("Downloading Python 3.11 installer...", false);
-                let home = std::env::var("USERPROFILE").unwrap_or_default();
-                let dest_installer = PathBuf::from(home).join(".robocek").join("python-installer.exe");
-
-                // Ensure directory exists
-                let _ = std::fs::create_dir_all(dest_installer.parent().unwrap());
-
-                let download_script = format!(
-                    "$ProgressPreference = 'SilentlyContinue'; \
-                     Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe' -OutFile '{}';",
-                    dest_installer.display()
-                );
-
-                let output = Command::new("powershell")
-                    .args(&["-NoProfile", "-Command", &download_script])
-                    .output();
-
-                match output {
-                    Ok(out) if out.status.success() => {
-                        emit_log("Installing Python silently (this may take a minute)...", false);
-                        let install_output = Command::new(&dest_installer)
-                            .args(&["/quiet", "InstallAllUsers=0", "PrependPath=1"])
-                            .status();
-
-                        let _ = std::fs::remove_file(&dest_installer);
-
-                        match install_output {
-                            Ok(status) if status.success() => {
-                                emit_log("Python installed successfully!", false);
-                                std::thread::sleep(std::time::Duration::from_secs(2));
-                                python_path = "python".to_string();
-                            }
-                            _ => {
-                                emit_log("[ERROR] Python installation failed. Please install Python 3.10+ manually.", true);
-                                return;
-                            }
-                        }
-                    }
-                    _ => {
-                        emit_log("[ERROR] Failed to download Python. Please check your internet connection.", true);
-                        return;
-                    }
-                }
+        // 1. Discover Python (unified logic)
+        let python_path = match discover_python() {
+            Some(p) => {
+                emit_log("[Bootstrap] Python: OK", false);
+                p
             }
-            #[cfg(not(target_os = "windows"))]
-            {
-                emit_log("[ERROR] Python 3.10+ is missing. Please install Python 3.10+ using your package manager.", true);
-                return;
-            }
-        } else {
-            // On Linux, prefer python3 since python often does not exist
-            if Command::new("python3").arg("--version").output().is_ok() {
-                python_path = "python3".to_string();
-            } else if Command::new("python").arg("--version").output().is_ok() {
-                python_path = "python".to_string();
-            } else {
-                emit_log("[ERROR] Python 3.10+ is missing. Please install Python 3.10+ using your package manager.", true);
-                return;
-            }
-        }
-
-        // 2. Create Virtual Environment
-        emit_log("Creating isolated virtual environment in ~/.robocek/penv...", false);
-        let paths = match get_robocek_env_paths() {
-            Some(p) => p,
             None => {
-                emit_log("[ERROR] Could not determine user home directory.", true);
-                return;
-            }
-        };
-        let (robocek_dir, penv_dir, bin_dir) = paths;
+                emit_log("[Bootstrap] Python: FAILED — Python 3.10+ not found", true);
+                #[cfg(target_os = "windows")]
+                {
+                    emit_log("Downloading Python 3.11 installer...", false);
+                    let home = std::env::var("USERPROFILE").unwrap_or_default();
+                    let dest_installer = PathBuf::from(home).join(".robocek").join("python-installer.exe");
+                    let _ = std::fs::create_dir_all(dest_installer.parent().unwrap());
 
-        let _ = std::fs::create_dir_all(&robocek_dir);
+                    let download_script = format!(
+                        "$ProgressPreference = 'SilentlyContinue'; \
+                         Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe' -OutFile '{}';",
+                        dest_installer.display()
+                    );
 
-        let venv_status = Command::new(&python_path)
-            .args(&["-m", "venv", &penv_dir.to_string_lossy()])
-            .status();
+                    let output = Command::new("powershell")
+                        .args(&["-NoProfile", "-Command", &download_script])
+                        .output();
 
-        match venv_status {
-            Ok(status) if status.success() => {
-                emit_log("Virtual environment created successfully.", false);
-            }
-            _ => {
-                emit_log("[ERROR] Failed to create virtual environment.", true);
-                return;
-            }
-        }
+                    match output {
+                        Ok(out) if out.status.success() => {
+                            emit_log("Installing Python silently (this may take a minute)...", false);
+                            let install_output = Command::new(&dest_installer)
+                                .args(&["/quiet", "InstallAllUsers=0", "PrependPath=1"])
+                                .status();
+                            let _ = std::fs::remove_file(&dest_installer);
 
-        // Ensure pip is available in the venv (Linux distros often omit it)
-        let pip_check = {
-            #[cfg(target_os = "windows")]
-            { Command::new(&bin_dir.join("pip.exe")).arg("--version").output() }
-            #[cfg(not(target_os = "windows"))]
-            { Command::new(&bin_dir.join("pip")).arg("--version").output() }
-        };
-
-        if pip_check.map(|o| o.status.success()).unwrap_or(false) {
-            emit_log("pip is available in virtual environment.", false);
-        } else {
-            emit_log("Bootstrapping pip in virtual environment...", false);
-            let ensurepip_status = Command::new(&bin_dir.join("python"))
-                .args(&["-m", "ensurepip", "--upgrade"])
-                .status();
-
-            match ensurepip_status {
-                Ok(status) if status.success() => {
-                    emit_log("pip bootstrapped successfully.", false);
-                }
-                _ => {
-                    // Fallback: try python -m ensurepip from the venv python directly
-                    let fallback = Command::new(&python_path)
-                        .args(&["-m", "ensurepip", "--upgrade"])
-                        .status();
-                    match fallback {
-                        Ok(status) if status.success() => {
-                            emit_log("pip bootstrapped successfully.", false);
+                            match install_output {
+                                Ok(status) if status.success() => {
+                                    emit_log("Python installed successfully!", false);
+                                    std::thread::sleep(std::time::Duration::from_secs(2));
+                                    "python".to_string()
+                                }
+                                _ => {
+                                    emit_log("[ERROR] Python installation failed. Please install Python 3.10+ manually.", true);
+                                    let _ = window.emit("bootstrap-progress", CommandOutput {
+                                        line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                                    });
+                                    return;
+                                }
+                            }
                         }
                         _ => {
-                            emit_log("[ERROR] Failed to install pip in virtual environment.", true);
+                            emit_log("[ERROR] Failed to download Python. Please check your internet connection.", true);
+                            let _ = window.emit("bootstrap-progress", CommandOutput {
+                                line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                            });
                             return;
                         }
                     }
                 }
+                #[cfg(not(target_os = "windows"))]
+                {
+                    emit_log("[ERROR] Python 3.10+ is missing. Please install Python 3.10+ using your package manager.", true);
+                    let _ = window.emit("bootstrap-progress", CommandOutput {
+                        line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                    });
+                    return;
+                }
             }
-        }
+        };
 
-        // 3. Install PlatformIO
-        emit_log("Installing PlatformIO Core (this may take a minute)...", false);
-        let pio_status = Command::new(&python_path)
-            .args(&["-m", "pip", "install", "platformio"])
-            .status();
-
-        match pio_status {
-            Ok(status) if status.success() => {
-                emit_log("PlatformIO Core installed successfully.", false);
-            }
-            _ => {
-                emit_log("[ERROR] Failed to install PlatformIO Core.", true);
+        // Get paths
+        let paths = match get_robocek_env_paths() {
+            Some(p) => p,
+            None => {
+                emit_log("[ERROR] Could not determine user home directory.", true);
+                let _ = window.emit("bootstrap-progress", CommandOutput {
+                    line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                });
                 return;
             }
+        };
+        let (robocek_dir, penv_dir, bin_dir) = paths;
+        let _ = std::fs::create_dir_all(&robocek_dir);
+
+        // 2. Create Virtual Environment (idempotent — only if missing or broken)
+        if check_venv_works(&penv_dir, &bin_dir) {
+            emit_log("[Bootstrap] Virtual environment: OK (already exists)", false);
+        } else {
+            emit_log("[Bootstrap] Virtual environment: Creating...", false);
+            let venv_status = Command::new(&python_path)
+                .args(&["-m", "venv", &penv_dir.to_string_lossy()])
+                .status();
+
+            match venv_status {
+                Ok(status) if status.success() => {
+                    emit_log("[Bootstrap] Virtual environment: OK", false);
+                }
+                _ => {
+                    emit_log("[ERROR] Failed to create virtual environment.", true);
+                    let _ = window.emit("bootstrap-progress", CommandOutput {
+                        line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                    });
+                    return;
+                }
+            }
+
+            // Ensure pip is available in the venv
+            let pip_check = {
+                #[cfg(target_os = "windows")]
+                { Command::new(&bin_dir.join("pip.exe")).arg("--version").output() }
+                #[cfg(not(target_os = "windows"))]
+                { Command::new(&bin_dir.join("pip")).arg("--version").output() }
+            };
+
+            if pip_check.map(|o| o.status.success()).unwrap_or(false) {
+                emit_log("[Bootstrap] pip: OK", false);
+            } else {
+                emit_log("[Bootstrap] pip: Bootstrapping...", false);
+                let ensurepip_status = Command::new(&bin_dir.join("python"))
+                    .args(&["-m", "ensurepip", "--upgrade"])
+                    .status();
+
+                match ensurepip_status {
+                    Ok(status) if status.success() => {
+                        emit_log("[Bootstrap] pip: OK", false);
+                    }
+                    _ => {
+                        let fallback = Command::new(&python_path)
+                            .args(&["-m", "ensurepip", "--upgrade"])
+                            .status();
+                        match fallback {
+                            Ok(status) if status.success() => {
+                                emit_log("[Bootstrap] pip: OK", false);
+                            }
+                            _ => {
+                                emit_log("[ERROR] Failed to install pip in virtual environment.", true);
+                                let _ = window.emit("bootstrap-progress", CommandOutput {
+                                    line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                                });
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
         }
 
-        // 4. Install robocek-cli
-        emit_log("Bundling and installing robocek-cli package...", false);
+        // 3. Install PlatformIO (idempotent — only if missing or broken)
+        if check_platformio_works(&bin_dir) {
+            emit_log("[Bootstrap] PlatformIO: OK (already installed)", false);
+        } else {
+            emit_log("[Bootstrap] PlatformIO: Installing...", false);
+            let pio_status = Command::new(&python_path)
+                .args(&["-m", "pip", "install", "platformio"])
+                .status();
 
-        let platform_root = find_platform_root();
-        if platform_root.is_none() {
-            emit_log("[ERROR] Bundled robocek-cli resources not found in app package.", true);
+            match pio_status {
+                Ok(status) if status.success() => {
+                    emit_log("[Bootstrap] PlatformIO: OK", false);
+                }
+                _ => {
+                    emit_log("[ERROR] Failed to install PlatformIO Core.", true);
+                    let _ = window.emit("bootstrap-progress", CommandOutput {
+                        line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                    });
+                    return;
+                }
+            }
+        }
+
+        // 4. Install robocek-cli (idempotent — only if missing or broken)
+        if check_cli_works(&bin_dir) {
+            emit_log("[Bootstrap] ROBOCEK CLI: OK (already installed)", false);
+        } else {
+            emit_log("[Bootstrap] ROBOCEK CLI: Installing...", false);
+
+            let platform_root = find_platform_root();
+            if platform_root.is_none() {
+                emit_log("[ERROR] Bundled robocek-cli resources not found in app package.", true);
+                let _ = window.emit("bootstrap-progress", CommandOutput {
+                    line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                });
+                return;
+            }
+            let cli_dir = platform_root.unwrap().parent().unwrap().to_path_buf();
+
+            let cli_status = Command::new(&python_path)
+                .args(&["-m", "pip", "install", &cli_dir.to_string_lossy()])
+                .status();
+
+            match cli_status {
+                Ok(status) if status.success() => {
+                    emit_log("[Bootstrap] ROBOCEK CLI: OK", false);
+                }
+                _ => {
+                    emit_log("[ERROR] Failed to install robocek-cli package.", true);
+                    let _ = window.emit("bootstrap-progress", CommandOutput {
+                        line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                    });
+                    return;
+                }
+            }
+        }
+
+        // 5. Verify SDK/resources
+        if check_sdk_available() {
+            emit_log("[Bootstrap] SDK/resources: OK", false);
+        } else {
+            emit_log("[ERROR] SDK/resources not found in app package.", true);
+            let _ = window.emit("bootstrap-progress", CommandOutput {
+                line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+            });
             return;
         }
-        let cli_dir = platform_root.unwrap().parent().unwrap().to_path_buf();
 
-        let cli_status = Command::new(&python_path)
-            .args(&["-m", "pip", "install", &cli_dir.to_string_lossy()])
-            .status();
-
-        match cli_status {
-            Ok(status) if status.success() => {
-                emit_log("robocek-cli installed successfully.", false);
-            }
-            _ => {
-                emit_log("[ERROR] Failed to install robocek-cli package.", true);
+        // 6. Post-install verification — re-run the full readiness check
+        emit_log("[Bootstrap] Verifying installation...", false);
+        let paths2 = match get_robocek_env_paths() {
+            Some(p) => p,
+            None => {
+                emit_log("[ERROR] Could not determine user home directory during verification.", true);
+                let _ = window.emit("bootstrap-progress", CommandOutput {
+                    line: String::new(), is_error: true, is_done: true, exit_code: Some(1),
+                });
                 return;
             }
-        }
+        };
+        let (_robocek_dir2, penv_dir2, bin_dir2) = paths2;
 
-        emit_log("Bootstrap completed! ROBOCEK environment is ready to use.", false);
-        
-        let _ = window.emit("bootstrap-progress", CommandOutput {
-            line: String::new(),
-            is_error: false,
-            is_done: true,
-            exit_code: Some(0),
-        });
+        let python_ok = discover_python().is_some();
+        let venv_ok = check_venv_works(&penv_dir2, &bin_dir2);
+        let pio_ok = check_platformio_works(&bin_dir2);
+        let cli_ok = check_cli_works(&bin_dir2);
+        let sdk_ok = check_sdk_available();
+
+        if python_ok && venv_ok && pio_ok && cli_ok && sdk_ok {
+            emit_log("[Bootstrap] Environment READY — all components verified", false);
+            let _ = window.emit("bootstrap-progress", CommandOutput {
+                line: String::new(),
+                is_error: false,
+                is_done: true,
+                exit_code: Some(0),
+            });
+        } else {
+            let mut failed = Vec::new();
+            if !python_ok { failed.push("Python"); }
+            if !venv_ok { failed.push("Virtual environment"); }
+            if !pio_ok { failed.push("PlatformIO"); }
+            if !cli_ok { failed.push("ROBOCEK CLI"); }
+            if !sdk_ok { failed.push("SDK/resources"); }
+            emit_log(&format!("[Bootstrap] Verification FAILED: {} — please retry", failed.join(", ")), true);
+            let _ = window.emit("bootstrap-progress", CommandOutput {
+                line: String::new(),
+                is_error: true,
+                is_done: true,
+                exit_code: Some(1),
+            });
+        }
     });
 }
 

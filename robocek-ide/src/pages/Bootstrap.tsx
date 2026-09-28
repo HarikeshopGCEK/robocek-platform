@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { Logo } from '../components/Logo';
-import type { CommandOutput } from '../types';
+import type { CommandOutput, BootstrapStatus } from '../types';
 
 interface BootstrapProps {
   onDone: () => void;
 }
 
-type SetupStep = 'idle' | 'python' | 'venv' | 'pio' | 'cli' | 'done' | 'failed';
+type SetupStep = 'idle' | 'python' | 'venv' | 'pio' | 'cli' | 'verify' | 'done' | 'failed';
 
 function CheckIcon() {
   return (
@@ -18,11 +18,21 @@ function CheckIcon() {
   );
 }
 
+function XIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  );
+}
+
 export function Bootstrap({ onDone }: BootstrapProps) {
   const [step, setStep] = useState<SetupStep>('idle');
   const [logs, setLogs] = useState<string[]>([]);
-  const [statusMessage, setStatusMessage] = useState('ROBOCEK IDE requires system setup before starting.');
+  const [statusMessage, setStatusMessage] = useState('Checking environment...');
   const [running, setRunning] = useState(false);
+  const [failedComponents, setFailedComponents] = useState<string[]>([]);
   const logEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll logs to bottom
@@ -30,12 +40,34 @@ export function Bootstrap({ onDone }: BootstrapProps) {
     logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [logs]);
 
+  // Check current status on mount to show what's already working
+  useEffect(() => {
+    invoke<BootstrapStatus>('check_bootstrap_status')
+      .then((status) => {
+        if (status.is_ready) {
+          setStatusMessage('Environment is ready.');
+        } else {
+          const missing: string[] = [];
+          if (!status.python_ok) missing.push('Python');
+          if (!status.venv_ok) missing.push('Virtual environment');
+          if (!status.pio_ok) missing.push('PlatformIO');
+          if (!status.cli_ok) missing.push('ROBOCEK CLI');
+          if (!status.sdk_ok) missing.push('SDK');
+          setFailedComponents(missing);
+          setStatusMessage(`Setup required: ${missing.join(', ')} ${missing.length === 1 ? 'is' : 'are'} missing or broken.`);
+        }
+      })
+      .catch(() => {
+        setStatusMessage('Unable to check environment status.');
+      });
+  }, []);
+
   const startSetup = async () => {
     if (running) return;
     setRunning(true);
     setLogs([]);
     setStep('python');
-    setStatusMessage('Setting up Python 3 environment...');
+    setStatusMessage('Setting up environment...');
 
     const appendLog = (line: string) => {
       setLogs(prev => [...prev, line]);
@@ -52,7 +84,7 @@ export function Bootstrap({ onDone }: BootstrapProps) {
           setRunning(false);
         } else {
           setStep('failed');
-          setStatusMessage('Setup failed. Check the logs below.');
+          setStatusMessage('Setup failed. Check the logs below for details.');
           setRunning(false);
         }
       } else {
@@ -60,15 +92,14 @@ export function Bootstrap({ onDone }: BootstrapProps) {
         appendLog(line);
 
         // Update steps based on log messages
-        if (line.includes('Creating isolated virtual environment')) {
+        if (line.includes('Virtual environment')) {
           setStep('venv');
-          setStatusMessage('Creating private virtual environment...');
-        } else if (line.includes('Installing PlatformIO Core')) {
+        } else if (line.includes('PlatformIO')) {
           setStep('pio');
-          setStatusMessage('Installing PlatformIO compiler toolchain...');
-        } else if (line.includes('Bundling and installing robocek-cli')) {
+        } else if (line.includes('ROBOCEK CLI')) {
           setStep('cli');
-          setStatusMessage('Installing ROBOCEK CLI & SDK...');
+        } else if (line.includes('Verifying')) {
+          setStep('verify');
         }
       }
     });
@@ -83,6 +114,14 @@ export function Bootstrap({ onDone }: BootstrapProps) {
       setRunning(false);
     }
   };
+
+  const steps = [
+    { key: 'python', label: 'Python 3.10+ Environment', desc: 'Verify Python installation' },
+    { key: 'venv', label: 'Virtual Environment', desc: 'Create ~/.robocek/penv' },
+    { key: 'pio', label: 'PlatformIO Core', desc: 'Install compilation toolchain' },
+    { key: 'cli', label: 'ROBOCEK CLI & SDK', desc: 'Install CLI and SDK' },
+    { key: 'verify', label: 'Verification', desc: 'Verify all components' },
+  ] as const;
 
   return (
     <div style={s.root}>
@@ -99,45 +138,31 @@ export function Bootstrap({ onDone }: BootstrapProps) {
 
         {/* Steps Card */}
         <div style={s.card}>
-          <div style={s.stepRow}>
-            <div style={{ ...s.stepIcon, ...(step === 'python' ? s.stepActive : ['venv', 'pio', 'cli', 'done'].includes(step) ? s.stepCompleted : {}) }}>
-              {['venv', 'pio', 'cli', 'done'].includes(step) ? <CheckIcon /> : '1'}
-            </div>
-            <div style={s.stepText}>
-              <div style={s.stepTitle}>Python 3.10+ Environment</div>
-              <div style={s.stepDesc}>Verify Python installation or download portable Windows version.</div>
-            </div>
-          </div>
+          {steps.map((st, i) => {
+            const stepOrder = ['python', 'venv', 'pio', 'cli', 'verify'];
+            const currentIdx = stepOrder.indexOf(step);
+            const thisIdx = stepOrder.indexOf(st.key);
+            const isCompleted = step === 'done' || (currentIdx > thisIdx && step !== 'idle' && step !== 'failed');
+            const isActive = step === st.key;
+            const isFailed = step === 'failed' && isActive;
 
-          <div style={s.stepRow}>
-            <div style={{ ...s.stepIcon, ...(step === 'venv' ? s.stepActive : ['pio', 'cli', 'done'].includes(step) ? s.stepCompleted : {}) }}>
-              {['pio', 'cli', 'done'].includes(step) ? <CheckIcon /> : '2'}
-            </div>
-            <div style={s.stepText}>
-              <div style={s.stepTitle}>Virtual Environment Setup</div>
-              <div style={s.stepDesc}>Create private local python virtual environment to prevent system conflicts.</div>
-            </div>
-          </div>
-
-          <div style={s.stepRow}>
-            <div style={{ ...s.stepIcon, ...(step === 'pio' ? s.stepActive : ['cli', 'done'].includes(step) ? s.stepCompleted : {}) }}>
-              {['cli', 'done'].includes(step) ? <CheckIcon /> : '3'}
-            </div>
-            <div style={s.stepText}>
-              <div style={s.stepTitle}>PlatformIO Core Compilation Toolchain</div>
-              <div style={s.stepDesc}>Install core library builders, compilers, and serial uploaders.</div>
-            </div>
-          </div>
-
-          <div style={s.stepRow}>
-            <div style={{ ...s.stepIcon, ...(step === 'cli' ? s.stepActive : step === 'done' ? s.stepCompleted : {}) }}>
-              {step === 'done' ? <CheckIcon /> : '4'}
-            </div>
-            <div style={s.stepText}>
-              <div style={s.stepTitle}>ROBOCEK CLI & SDK</div>
-              <div style={s.stepDesc}>Install the robot configuration generator and standard library SDK.</div>
-            </div>
-          </div>
+            return (
+              <div key={st.key} style={s.stepRow}>
+                <div style={{
+                  ...s.stepIcon,
+                  ...(isActive ? s.stepActive : {}),
+                  ...(isCompleted ? s.stepCompleted : {}),
+                  ...(isFailed ? s.stepFailed : {}),
+                }}>
+                  {isCompleted ? <CheckIcon /> : isFailed ? <XIcon /> : i + 1}
+                </div>
+                <div style={s.stepText}>
+                  <div style={s.stepTitle}>{st.label}</div>
+                  <div style={s.stepDesc}>{st.desc}</div>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {/* Logs console */}
@@ -149,7 +174,7 @@ export function Bootstrap({ onDone }: BootstrapProps) {
                 style={{
                   ...s.logLine,
                   color: line.startsWith('[ERROR]') ? 'var(--error)'
-                       : line.startsWith('Bootstrap completed') ? 'var(--success)'
+                       : line.includes('READY') || line.includes('OK') ? 'var(--success)'
                        : line.startsWith('  ') ? 'var(--text-secondary)'
                        : 'var(--text-primary)',
                 }}
@@ -172,7 +197,7 @@ export function Bootstrap({ onDone }: BootstrapProps) {
           {running && (
             <div style={s.runningLoader}>
               <div className="spinner" style={{ marginRight: 12 }} />
-              <span>Installing dependencies... Please do not close the window.</span>
+              <span>Setting up environment... Please do not close the window.</span>
             </div>
           )}
 
@@ -236,11 +261,6 @@ const s: Record<string, React.CSSProperties> = {
     marginBottom: 28,
     textAlign: 'center',
   },
-  logoMark: {
-    fontSize: 44,
-    marginBottom: 12,
-    filter: 'drop-shadow(0 0 20px rgba(0,200,255,0.5))',
-  },
   title: {
     fontSize: 28,
     fontWeight: 700,
@@ -295,6 +315,11 @@ const s: Record<string, React.CSSProperties> = {
     borderColor: 'var(--success)',
     background: 'var(--success)',
     color: '#000',
+  },
+  stepFailed: {
+    borderColor: 'var(--error)',
+    background: 'var(--error)',
+    color: '#fff',
   },
   stepText: {
     display: 'flex',

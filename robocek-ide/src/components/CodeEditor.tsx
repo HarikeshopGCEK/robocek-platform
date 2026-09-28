@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import MonacoEditor from '@monaco-editor/react';
 import { Logo } from './Logo';
 import { useTheme } from '../theme';
@@ -97,6 +98,16 @@ export function CodeEditor({
 }: CodeEditorProps) {
   const { theme } = useTheme();
   const activeFile = openFiles.find(f => f.path === activeFilePath);
+  const monacoRef = useRef<any>(null);
+  const editorRef = useRef<any>(null);
+
+  // Update Monaco theme when theme changes
+  useEffect(() => {
+    if (monacoRef.current) {
+      const themeName = theme === 'dark' ? 'robocek-dark' : 'robocek-light';
+      monacoRef.current.editor.setTheme(themeName);
+    }
+  }, [theme]);
 
   return (
     <div style={s.root}>
@@ -138,9 +149,15 @@ export function CodeEditor({
             theme="vs-dark"
             onChange={val => onFileChange(activeFile.path, val ?? '')}
             onMount={(editor, monaco) => {
+              monacoRef.current = monaco;
+              editorRef.current = editor;
+
+              // Define both themes
+              monaco.editor.defineTheme('robocek-dark', DARK_THEME);
+              monaco.editor.defineTheme('robocek-light', LIGHT_THEME);
+
+              // Set initial theme
               const themeName = theme === 'dark' ? 'robocek-dark' : 'robocek-light';
-              const themeData = theme === 'dark' ? DARK_THEME : LIGHT_THEME;
-              monaco.editor.defineTheme(themeName, themeData);
               monaco.editor.setTheme(themeName);
 
               // Save on Ctrl+S

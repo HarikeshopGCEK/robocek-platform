@@ -60,3 +60,13 @@ export interface RecentProject {
 }
 
 export type AppScreen = 'bootstrap' | 'welcome' | 'new-project' | 'editor';
+
+export interface BootstrapStatus {
+  is_ready: boolean;
+  python_ok: boolean;
+  venv_ok: boolean;
+  pio_ok: boolean;
+  cli_ok: boolean;
+  sdk_ok: boolean;
+  message: string;
+}
