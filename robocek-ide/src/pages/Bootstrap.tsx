@@ -136,6 +136,13 @@ export function Bootstrap({ onDone }: BootstrapProps) {
           <p style={s.subtitle}>{statusMessage}</p>
         </div>
 
+        {/* Missing components hint */}
+        {failedComponents.length > 0 && step === 'idle' && (
+          <div style={s.missingHint}>
+            The following components need attention: {failedComponents.join(', ')}
+          </div>
+        )}
+
         {/* Steps Card */}
         <div style={s.card}>
           {steps.map((st, i) => {
@@ -274,6 +281,16 @@ const s: Record<string, React.CSSProperties> = {
     color: 'var(--text-secondary)',
     maxWidth: 420,
     lineHeight: 1.5,
+  },
+  missingHint: {
+    padding: '10px 16px',
+    background: 'var(--warning-dim)',
+    border: '1px solid rgba(255,179,0,0.25)',
+    borderRadius: 'var(--r)',
+    color: 'var(--warning)',
+    fontSize: 12,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   card: {
     background: 'var(--bg-panel)',
